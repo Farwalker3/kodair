@@ -171,6 +171,15 @@ function toggleSettingsPanel() {
 	}
 }
 
+function toggleSettingsPanel() {
+	var x = document.getElementById('SettingsPanel');
+	if (x.style.display === 'block') {
+		x.style.display = 'none';
+	} else {
+		x.style.display = 'block';
+	}
+}
+
 function startTime() {
 	var today = new Date();
 	var hours = today.getHours();
