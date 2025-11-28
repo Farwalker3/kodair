@@ -171,7 +171,7 @@ function toggleSettingsPanel() {
 	}
 }
 
-function toggleSettingsPanel() {
+function toggleAccountsPanel() {
 	var x = document.getElementById('SettingsPanel');
 	if (x.style.display === 'block') {
 		x.style.display = 'none';
