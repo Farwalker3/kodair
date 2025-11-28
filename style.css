@@ -573,6 +573,24 @@ body {
 	display: none;
 }
 
+#AccountsPanel {
+	position: absolute;
+	display: none;
+	top: 0;
+	left: 95px;
+	width: calc(35% - 50px);
+	height: 100%;
+	background-color: rgba(200, 250, 200, 0.75);
+	z-index: 2;
+	flex: 1 1 auto;
+	overflow-y: auto;
+	backdrop-filter: blur(6px);
+}
+
+#AccountsPanel::-webkit-scrollbar {
+	display: none;
+}
+
 div.updates {
 	position: relative;
 	display: flex;
