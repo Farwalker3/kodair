@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Coding - Code Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Vibe Coding</h1>
+        <nav>
+            <ul>
+                <li><a href="https://bolt.new" target="_blank">Bolt.new</a></li>
+                <li><a href="https://lovable.dev" target="_blank">Lovable.dev</a></li>
+                <!-- Room for more links -->
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="editor-container">
+            <div class="editor-tabs">
+                <button class="tab-btn active" data-tab="html">HTML</button>
+                <button class="tab-btn" data-tab="css">CSS</button>
+                <button class="tab-btn" data-tab="js">JavaScript</button>
+            </div>
+            <div class="editor-panels">
+                <div class="panel active" id="html-panel">
+                    <textarea id="html-code" placeholder="Enter HTML code here..."></textarea>
+                </div>
+                <div class="panel" id="css-panel">
+                    <textarea id="css-code" placeholder="Enter CSS code here..."></textarea>
+                </div>
+                <div class="panel" id="js-panel">
+                    <textarea id="js-code" placeholder="Enter JavaScript code here..."></textarea>
+                </div>
+            </div>
+            <button id="run-btn">Run</button>
+        </div>
+
+        <div class="preview-container">
+            <h2>Preview</h2>
+            <iframe id="preview-frame"></iframe>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Vibe Coding - A simple code editor for Kodair</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
