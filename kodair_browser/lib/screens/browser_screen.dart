@@ -9,6 +9,8 @@ import '../widgets/info_panel.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/accounts_panel.dart';
 import '../widgets/search_overlay.dart';
+import '../models/kodair_app.dart';
+import '../data/app_registry.dart';
 
 class BrowserScreen extends StatelessWidget {
   const BrowserScreen({super.key});
@@ -43,7 +45,15 @@ class BrowserScreen extends StatelessWidget {
                   children: [
                     if (!(isMobile && browser.isSidebarCollapsed))
                       const KodBar(),
-                    Expanded(child: const ContentView()),
+                    Expanded(
+                      child: IndexedStack(
+                        index: browser.activeTabIndex,
+                        children: <Widget>[
+                          for (final tab in browser.tabs)
+                            ContentView(tabState: tab),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -96,69 +106,59 @@ class BrowserScreen extends StatelessWidget {
     );
   }
 
-  /// Custom title bar with ALL navigation controls merged in
+  /// Custom title bar with ALL navigation controls merged in, PLUS TABS!
   Widget _buildCustomTitleBar(BuildContext context, BrowserProvider browser) {
     return Container(
       height: 32,
       color: KodairTheme.sizeBarBg,
       child: Row(
         children: [
-          // --- LEFT: Navigation controls (from original SizeBar) ---
-          // Home/Close
-          _TitleBarBtn(
-            icon: Icons.close,
-            hoverColor: KodairTheme.closeRed,
-            onTap: () => browser.goHome(),
-            tooltip: 'Home',
-          ),
-          // Refresh
-          _TitleBarBtn(
-            icon: Icons.refresh,
-            hoverColor: KodairTheme.refreshYellow,
-            onTap: () {
-              final url = browser.currentAppUrl;
-              browser.navigateToApp(url);
-            },
-            tooltip: 'Refresh',
-          ),
-          // Fullscreen (the ONLY fullscreen button)
-          _TitleBarBtn(
-            icon: Icons.fullscreen,
-            hoverColor: KodairTheme.fullscreenGreen,
-            onTap: () => appWindow.maximizeOrRestore(),
-            tooltip: 'Fullscreen',
-          ),
-          // Back
-          _TitleBarBtn(
-            icon: Icons.arrow_back,
-            hoverColor: KodairTheme.backBlue,
-            onTap: browser.canGoBack ? () => browser.goBack() : null,
-            tooltip: 'Back',
-          ),
-          // Forward
-          _TitleBarBtn(
-            icon: Icons.arrow_forward,
-            hoverColor: KodairTheme.forwardCyan,
-            onTap: browser.canGoForward ? () => browser.goForward() : null,
-            tooltip: 'Forward',
-          ),
+          // --- LEFT: Navigation controls ---
+          _TitleBarBtn(icon: Icons.close, hoverColor: KodairTheme.closeRed, onTap: () => browser.goHome(), tooltip: 'Home'),
+          _TitleBarBtn(icon: Icons.refresh, hoverColor: KodairTheme.refreshYellow, onTap: () => browser.navigateToApp(browser.currentAppUrl), tooltip: 'Refresh'),
+          _TitleBarBtn(icon: Icons.fullscreen, hoverColor: KodairTheme.fullscreenGreen, onTap: () => appWindow.maximizeOrRestore(), tooltip: 'Fullscreen'),
+          _TitleBarBtn(icon: Icons.arrow_back, hoverColor: KodairTheme.backBlue, onTap: browser.canGoBack ? () => browser.goBack() : null, tooltip: 'Back'),
+          _TitleBarBtn(icon: Icons.arrow_forward, hoverColor: KodairTheme.forwardCyan, onTap: browser.canGoForward ? () => browser.goForward() : null, tooltip: 'Forward'),
 
           const SizedBox(width: 8),
 
-          // --- CENTER: Draggable title area ---
+          // --- CENTER: TABS ---
           Expanded(
             child: MoveWindow(
-              child: Container(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Kodair — ${browser.currentAppName}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
+              child: Row(
+                children: [
+                  // Scrollable Tab List
+                  Expanded(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: browser.tabs.length,
+                      itemBuilder: (context, index) {
+                        return _buildTab(context, browser, index);
+                      },
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  
+                  // Add Tab Button
+                  if (browser.tabs.length < 3)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Tooltip(
+                        message: 'New Tab',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => browser.addTab('https://kodair.us/Welcome/Welcome.html', 'Welcome'),
+                            hoverColor: Colors.white12,
+                            borderRadius: BorderRadius.circular(16),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(Icons.add, size: 16, color: Colors.white70),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -188,6 +188,96 @@ class BrowserScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTab(BuildContext context, BrowserProvider browser, int index) {
+    final tab = browser.tabs[index];
+    final isActive = index == browser.activeTabIndex;
+
+    return GestureDetector(
+      onTap: () => browser.setActiveTab(index),
+      onSecondaryTapDown: (details) => _showTabContextMenu(context, details.globalPosition, browser, index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 140,
+        margin: const EdgeInsets.only(right: 2, top: 4, bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withAlpha(40) : Colors.white.withAlpha(10),
+          borderRadius: BorderRadius.circular(6),
+          border: isActive ? Border.all(color: Colors.white.withAlpha(80), width: 1) : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                tab.currentAppName,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? Colors.white : Colors.white70,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (browser.tabs.length > 1)
+              InkWell(
+                onTap: () => browser.closeTab(index),
+                hoverColor: Colors.red.withAlpha(150),
+                borderRadius: BorderRadius.circular(10),
+                child: const Icon(Icons.close, size: 12, color: Colors.white70),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTabContextMenu(BuildContext context, Offset position, BrowserProvider browser, int tabIndex) {
+    final tab = browser.tabs[tabIndex];
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+      color: KodairTheme.appBarBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      items: <PopupMenuEntry<dynamic>>[
+        PopupMenuItem(
+          onTap: () {
+            // Save tab as an app in the sidebar (registry)
+            kodairApps.add(
+              KodairApp(
+                name: tab.currentAppName,
+                url: tab.currentAppUrl,
+                iconData: Icons.web,
+              ),
+            );
+            // Force rebuild of UI to show new app in sidebar
+            browser.forceRebuild();
+          },
+          child: const Row(
+            children: [
+              Icon(Icons.save_alt, size: 18, color: Colors.white70),
+              SizedBox(width: 8),
+              Text('Save Tab as App', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+        ),
+        if (browser.tabs.length > 1)
+          const PopupMenuDivider(height: 1),
+        if (browser.tabs.length > 1)
+          PopupMenuItem(
+            onTap: () => browser.closeTab(tabIndex),
+            child: const Row(
+              children: [
+                Icon(Icons.close, size: 18, color: Colors.redAccent),
+                SizedBox(width: 8),
+                Text('Close Tab', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

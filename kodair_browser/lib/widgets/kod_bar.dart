@@ -74,7 +74,7 @@ class KodBar extends StatelessWidget {
     final apps = kodairApps.where((a) => !a.isWidget).toList();
     
     // Create unified list of all buttons (apps + utility)
-    final List<Widget> allButtons = apps.map((app) => _appButton(app, browser)).toList();
+    final List<Widget> allButtons = apps.map((app) => _appButton(context, app, browser)).toList();
     // Add utility buttons at the end
     allButtons.add(_utilBtn(Icons.account_circle, 'Account',
         () => browser.togglePanel(PanelType.accounts)));
@@ -104,12 +104,37 @@ class KodBar extends StatelessWidget {
     return Column(children: rows);
   }
 
-  Widget _appButton(KodairApp app, BrowserProvider browser) {
+  Widget _appButton(BuildContext context, KodairApp app, BrowserProvider browser) {
     final isSelected = browser.currentAppUrl == app.url;
     return Tooltip(
       message: app.name,
       child: GestureDetector(
         onTap: () => browser.navigateToApp(app.url, name: app.name),
+        onSecondaryTapDown: (details) {
+          showMenu(
+            context: context,
+            position: RelativeRect.fromLTRB(
+              details.globalPosition.dx,
+              details.globalPosition.dy,
+              details.globalPosition.dx,
+              details.globalPosition.dy,
+            ),
+            color: KodairTheme.appBarBg,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            items: <PopupMenuEntry<dynamic>>[
+              PopupMenuItem(
+                onTap: () => browser.addTab(app.url, app.name),
+                child: const Row(
+                  children: [
+                    Icon(Icons.open_in_new, size: 18, color: Colors.white70),
+                    SizedBox(width: 8),
+                    Text('Open in New Tab', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 40,

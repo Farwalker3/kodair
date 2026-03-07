@@ -2,65 +2,147 @@ import 'package:flutter/material.dart';
 
 enum PanelType { info, settings, accounts }
 
+class TabState extends ChangeNotifier {
+  String currentAppUrl;
+  String currentAppName;
+  List<String> history;
+  int historyIndex;
+
+  TabState({
+    this.currentAppUrl = 'https://kodair.us/Welcome/Welcome.html',
+    this.currentAppName = 'Welcome',
+    List<String>? initialHistory,
+  })  : history = initialHistory ?? ['https://kodair.us/Welcome/Welcome.html'],
+        historyIndex = 0;
+
+  bool get canGoBack => historyIndex > 0;
+  bool get canGoForward => historyIndex < history.length - 1;
+
+  void navigate(String url, String name) {
+    if (historyIndex < history.length - 1) {
+      history = history.sublist(0, historyIndex + 1);
+    }
+    currentAppUrl = url;
+    currentAppName = name;
+    history.add(url);
+    historyIndex = history.length - 1;
+    notifyListeners();
+  }
+
+  void goBack() {
+    if (canGoBack) {
+      historyIndex--;
+      currentAppUrl = history[historyIndex];
+      notifyListeners();
+    }
+  }
+
+  void goForward() {
+    if (canGoForward) {
+      historyIndex++;
+      currentAppUrl = history[historyIndex];
+      notifyListeners();
+    }
+  }
+}
+
 class BrowserProvider extends ChangeNotifier {
-  String _currentAppUrl = 'https://kodair.us/Welcome/Welcome.html';
-  String _currentAppName = 'Welcome';
+  // Tab Management
+  final List<TabState> _tabs = [TabState()];
+  int _activeTabIndex = 0;
+
+  List<TabState> get tabs => _tabs;
+  int get activeTabIndex => _activeTabIndex;
+  TabState get activeTab => _tabs[_activeTabIndex];
+
+  // Global State
   bool _isInfoPanelOpen = false;
   bool _isSettingsPanelOpen = false;
   bool _isAccountsPanelOpen = false;
   bool _isSearchOpen = false;
   bool _isTorEnabled = false;
   bool _isSidebarCollapsed = false;
-  List<String> _history = ['https://kodair.us/Welcome/Welcome.html'];
-  int _historyIndex = 0;
 
-  // Getters
-  String get currentAppUrl => _currentAppUrl;
-  String get currentAppName => _currentAppName;
+  // Getters for active tab wrappers
+  String get currentAppUrl => activeTab.currentAppUrl;
+  String get currentAppName => activeTab.currentAppName;
+  bool get canGoBack => activeTab.canGoBack;
+  bool get canGoForward => activeTab.canGoForward;
+
+  // Global Getters
   bool get isInfoPanelOpen => _isInfoPanelOpen;
   bool get isSettingsPanelOpen => _isSettingsPanelOpen;
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
   bool get isSearchOpen => _isSearchOpen;
   bool get isTorEnabled => _isTorEnabled;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
-  bool get canGoBack => _historyIndex > 0;
-  bool get canGoForward => _historyIndex < _history.length - 1;
 
-  /// Navigate to a new app/url
-  void navigateToApp(String url, {String name = ''}) {
-    // If we're navigating from middle of history, truncate forward
-    if (_historyIndex < _history.length - 1) {
-      _history = _history.sublist(0, _historyIndex + 1);
-    }
-    _currentAppUrl = url;
-    _currentAppName = name;
-    _history.add(url);
-    _historyIndex = _history.length - 1;
+  /// Add a new tab (Max 3)
+  void addTab(String url, String name) {
+    if (_tabs.length >= 3) return; // Enforce max 3 tabs
+    
+    final newTab = TabState(
+      currentAppUrl: url,
+      currentAppName: name,
+      initialHistory: [url],
+    );
+    _tabs.add(newTab);
+    _activeTabIndex = _tabs.length - 1; // Auto-switch to new tab
+    
+    // Listen to changes in the new tab so the UI updates
+    newTab.addListener(notifyListeners);
     _closeAllPanels();
     notifyListeners();
   }
 
-  /// Go back in history
+  /// Close a specific tab by index
+  void closeTab(int index) {
+    if (_tabs.length <= 1) return; // Keep at least 1 tab open
+    
+    final closingTab = _tabs[index];
+    closingTab.removeListener(notifyListeners);
+    
+    _tabs.removeAt(index);
+    if (_activeTabIndex >= _tabs.length) {
+      _activeTabIndex = _tabs.length - 1;
+    }
+    notifyListeners();
+  }
+
+  /// Switch the active tab
+  void setActiveTab(int index) {
+    if (index >= 0 && index < _tabs.length) {
+      _activeTabIndex = index;
+      _closeAllPanels();
+      notifyListeners();
+    }
+  }
+
+  /// Navigate active tab to a new app/url
+  void navigateToApp(String url, {String name = ''}) {
+    activeTab.navigate(url, name);
+    _closeAllPanels();
+    notifyListeners();
+  }
+
+  /// Go back in active tab
   void goBack() {
-    if (canGoBack) {
-      _historyIndex--;
-      _currentAppUrl = _history[_historyIndex];
-      notifyListeners();
-    }
+    activeTab.goBack();
   }
 
-  /// Go forward in history
+  /// Go forward in active tab
   void goForward() {
-    if (canGoForward) {
-      _historyIndex++;
-      _currentAppUrl = _history[_historyIndex];
-      notifyListeners();
-    }
+    activeTab.goForward();
   }
 
-  /// Go home (Welcome page)
+  /// Go home in active tab
   void goHome() {
     navigateToApp('https://kodair.us/Welcome/Welcome.html', name: 'Welcome');
+  }
+
+  /// Force UI rebuild (used by plugins/context menus when global registry changes)
+  void forceRebuild() {
+    notifyListeners();
   }
 
   /// Toggle a panel open/close

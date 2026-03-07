@@ -47,7 +47,9 @@ const String _pointerLockJS = '''
 /// Content viewer using InAppWebView with scroll fix and pointer lock
 /// workaround for Windows.
 class ContentView extends StatefulWidget {
-  const ContentView({super.key});
+  final TabState tabState;
+  
+  const ContentView({super.key, required this.tabState});
 
   @override
   State<ContentView> createState() => _ContentViewState();
@@ -160,13 +162,13 @@ class _ContentViewState extends State<ContentView> {
     final browser = context.watch<BrowserProvider>();
 
     // Navigate when URL changes
-    if (_webViewController != null && _lastUrl != browser.currentAppUrl) {
-      _lastUrl = browser.currentAppUrl;
+    if (_webViewController != null && _lastUrl != widget.tabState.currentAppUrl) {
+      _lastUrl = widget.tabState.currentAppUrl;
       if (_isPointerLocked) {
         _setPointerLock(false);
       }
       _webViewController!.loadUrl(
-        urlRequest: URLRequest(url: WebUri(browser.currentAppUrl)),
+        urlRequest: URLRequest(url: WebUri(widget.tabState.currentAppUrl)),
       );
     }
 
@@ -195,7 +197,7 @@ class _ContentViewState extends State<ContentView> {
                       key: ValueKey(_currentTorState),
                       webViewEnvironment: _webViewEnvironment,
                       initialUrlRequest: URLRequest(
-                        url: WebUri(browser.currentAppUrl),
+                        url: WebUri(widget.tabState.currentAppUrl),
                       ),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
@@ -218,7 +220,7 @@ class _ContentViewState extends State<ContentView> {
                 ]),
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
-                  _lastUrl = browser.currentAppUrl;
+                  _lastUrl = widget.tabState.currentAppUrl;
                 },
                 onLoadStart: (controller, url) {
                   if (mounted) setState(() => _isLoading = true);
