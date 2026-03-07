@@ -1,3 +1,7 @@
+body {
+	background-color: transparent !important;
+}
+
 .WelcomeContainer {
 	position: absolute;
 	top: 0;
