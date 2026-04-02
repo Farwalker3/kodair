@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum PanelType { info, settings, accounts }
 
@@ -14,6 +16,21 @@ class TabState extends ChangeNotifier {
     List<String>? initialHistory,
   })  : history = initialHistory ?? ['https://kodair.us/Welcome/Welcome.html'],
         historyIndex = 0;
+
+  Map<String, dynamic> toJson() => {
+        'currentAppUrl': currentAppUrl,
+        'currentAppName': currentAppName,
+        'history': history,
+        'historyIndex': historyIndex,
+      };
+
+  factory TabState.fromJson(Map<String, dynamic> json) {
+    return TabState(
+      currentAppUrl: json['currentAppUrl'] as String? ?? 'https://kodair.us/Welcome/Welcome.html',
+      currentAppName: json['currentAppName'] as String? ?? 'Welcome',
+      initialHistory: (json['history'] as List<dynamic>?)?.cast<String>(),
+    )..historyIndex = json['historyIndex'] as int? ?? 0;
+  }
 
   bool get canGoBack => historyIndex > 0;
   bool get canGoForward => historyIndex < history.length - 1;
@@ -48,12 +65,59 @@ class TabState extends ChangeNotifier {
 
 class BrowserProvider extends ChangeNotifier {
   // Tab Management
-  final List<TabState> _tabs = [TabState()];
+  final List<TabState> _tabs = [];
   int _activeTabIndex = 0;
+
+  BrowserProvider() {
+    _loadState();
+  }
+
+  Future<void> _loadState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tabsJson = prefs.getString('saved_tabs');
+      if (tabsJson != null) {
+        final List<dynamic> decoded = jsonDecode(tabsJson);
+        final loadedTabs = decoded.map((t) => TabState.fromJson(t as Map<String, dynamic>)).toList();
+        if (loadedTabs.isNotEmpty) {
+          _tabs.addAll(loadedTabs);
+          _activeTabIndex = prefs.getInt('active_tab_index') ?? 0;
+          if (_activeTabIndex >= _tabs.length) _activeTabIndex = _tabs.length - 1;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading tabs: $e');
+    }
+
+    if (_tabs.isEmpty) {
+      _tabs.add(TabState());
+    }
+
+    for (var tab in _tabs) {
+      tab.addListener(_onTabUpdated);
+    }
+    notifyListeners();
+  }
+
+  void _onTabUpdated() {
+    notifyListeners();
+    _saveState();
+  }
+
+  Future<void> _saveState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encodedTabs = jsonEncode(_tabs.map((t) => t.toJson()).toList());
+      await prefs.setString('saved_tabs', encodedTabs);
+      await prefs.setInt('active_tab_index', _activeTabIndex);
+    } catch (e) {
+      debugPrint('Error saving tabs: $e');
+    }
+  }
 
   List<TabState> get tabs => _tabs;
   int get activeTabIndex => _activeTabIndex;
-  TabState get activeTab => _tabs[_activeTabIndex];
+  TabState get activeTab => _tabs.isEmpty ? TabState() : _tabs[_activeTabIndex];
 
   // Global State
   bool _isInfoPanelOpen = false;
@@ -90,9 +154,9 @@ class BrowserProvider extends ChangeNotifier {
     _activeTabIndex = _tabs.length - 1; // Auto-switch to new tab
     
     // Listen to changes in the new tab so the UI updates
-    newTab.addListener(notifyListeners);
+    newTab.addListener(_onTabUpdated);
     _closeAllPanels();
-    notifyListeners();
+    _onTabUpdated();
   }
 
   /// Close a specific tab by index
@@ -100,13 +164,13 @@ class BrowserProvider extends ChangeNotifier {
     if (_tabs.length <= 1) return; // Keep at least 1 tab open
     
     final closingTab = _tabs[index];
-    closingTab.removeListener(notifyListeners);
+    closingTab.removeListener(_onTabUpdated);
     
     _tabs.removeAt(index);
     if (_activeTabIndex >= _tabs.length) {
       _activeTabIndex = _tabs.length - 1;
     }
-    notifyListeners();
+    _onTabUpdated();
   }
 
   /// Switch the active tab
@@ -114,7 +178,7 @@ class BrowserProvider extends ChangeNotifier {
     if (index >= 0 && index < _tabs.length) {
       _activeTabIndex = index;
       _closeAllPanels();
-      notifyListeners();
+      _onTabUpdated();
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/browser_provider.dart';
+import '../services/update_service.dart';
 import '../theme/kodair_theme.dart';
 
 class SettingsPanel extends StatelessWidget {
@@ -30,7 +31,7 @@ class SettingsPanel extends StatelessWidget {
           ),
           _buildTorToggle(context, browser),
           _buildFullscreenCard(context),
-          _buildAboutCard(),
+          _buildAboutCard(context),
         ],
       ),
     );
@@ -203,7 +204,7 @@ class SettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildAboutCard() {
+  Widget _buildAboutCard(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -229,11 +230,11 @@ class SettingsPanel extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.all(12),
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                Text(
+                const Text(
                   'Kodair Browser v1.0',
                   style: TextStyle(
                     fontSize: 14,
@@ -251,6 +252,21 @@ class SettingsPanel extends StatelessWidget {
                   'A cross-platform browser with apps instead of tabs.\nPowered by Flutter.',
                   style: TextStyle(fontSize: 11, color: Colors.black54),
                   textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => UpdateService.showUpdateDialog(context, showNoUpdate: true),
+                    icon: const Icon(Icons.system_update_alt, size: 16),
+                    label: const Text('Check for Updates'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: KodairTheme.appBarBg,
+                      foregroundColor: Colors.white,
+                      surfaceTintColor: Colors.transparent,
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -6,6 +6,7 @@ import 'providers/browser_provider.dart';
 import 'theme/kodair_theme.dart';
 import 'screens/browser_screen.dart';
 import 'utils/native_env.dart';
+import 'services/update_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,8 +44,31 @@ class KodairBrowserApp extends StatelessWidget {
         theme: KodairTheme.darkTheme,
         darkTheme: KodairTheme.darkTheme,
         themeMode: ThemeMode.dark,
-        home: const BrowserScreen(),
+        home: const UpdateChecker(child: BrowserScreen()),
       ),
     );
+  }
+}
+
+class UpdateChecker extends StatefulWidget {
+  final Widget child;
+  const UpdateChecker({super.key, required this.child});
+
+  @override
+  State<UpdateChecker> createState() => _UpdateCheckerState();
+}
+
+class _UpdateCheckerState extends State<UpdateChecker> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.showUpdateDialog(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
