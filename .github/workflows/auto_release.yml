@@ -8,11 +8,44 @@ on:
       - 'kodair_browser/pubspec.yaml' # Triggers automatically when you increment your Flutter version number
 
 jobs:
-  build-and-release:
+  build-android:
+    name: Compile Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.4'
+          channel: 'stable'
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '^version:\s+\K.*' kodair_browser/pubspec.yaml)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Build Android APK
+        working-directory: ./kodair_browser
+        run: flutter build apk --release
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodair-android-apk
+          path: kodair_browser/build/app/outputs/flutter-apk/app-release.apk
+
+  build-windows:
+    name: Compile Windows Installer
     runs-on: windows-latest
-    permissions:
-      contents: write
-    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,26 +53,17 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.4' # Match your local Dart SDK requirements
+          flutter-version: '3.19.4'
           channel: 'stable'
 
-      - name: Read Version from Pubspec
-        id: get_version
+      - name: Get Version
         run: |
           $content = Get-Content "kodair_browser/pubspec.yaml" -Raw
           if ($content -match "(?m)^version:\s+(.*?)\s*$") {
-            $version = $matches[1]
-            echo "VERSION=$version" >> $env:GITHUB_ENV
-          } else {
-            echo "Version not found!"
-            exit 1
+            echo "VERSION=$($matches[1])" >> $env:GITHUB_ENV
           }
 
-      - name: Build Android APK
-        working-directory: ./kodair_browser
-        run: flutter build apk --release
-
-      - name: Build Windows Desktop
+      - name: Build Desktop Executable
         working-directory: ./kodair_browser
         run: flutter build windows --release
 
@@ -48,6 +72,34 @@ jobs:
         with:
           path: kodair_setup.iss
 
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodair-windows-installer
+          path: Output/Kodair_Installer.exe
+
+  publish-release:
+    name: Draft GitHub Release
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '^version:\s+\K.*' kodair_browser/pubspec.yaml)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-binaries
+          merge-multiple: true
+
       - name: Publish Automated GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -55,7 +107,7 @@ jobs:
           name: Kodair Browser v${{ env.VERSION }}
           body: "Automated Native Release Pipeline triggered by version increment. \n\nIncludes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
           files: |
-            kodair_browser/build/app/outputs/flutter-apk/app-release.apk
-            Output/Kodair_Installer.exe
+            release-binaries/app-release.apk
+            release-binaries/Kodair_Installer.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
