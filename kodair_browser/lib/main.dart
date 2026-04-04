@@ -20,15 +20,17 @@ void main() {
   runApp(const KodairBrowserApp());
 
   // Configure the custom window frame (Windows/macOS/Linux)
-  doWhenWindowReady(() {
-    final win = appWindow;
-    const initialSize = Size(1280, 720);
-    win.minSize = const Size(600, 400);
-    win.size = initialSize;
-    win.alignment = Alignment.center;
-    win.title = 'Kodair';
-    win.show();
-  });
+  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    doWhenWindowReady(() {
+      final win = appWindow;
+      const initialSize = Size(1280, 720);
+      win.minSize = const Size(600, 400);
+      win.size = initialSize;
+      win.alignment = Alignment.center;
+      win.title = 'Kodair';
+      win.show();
+    });
+  }
 }
 
 class KodairBrowserApp extends StatelessWidget {

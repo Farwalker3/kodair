@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 enum PanelType { info, settings, accounts }
 
@@ -9,6 +10,8 @@ class TabState extends ChangeNotifier {
   String currentAppName;
   List<String> history;
   int historyIndex;
+
+  InAppWebViewController? webViewController;
 
   TabState({
     this.currentAppUrl = 'https://kodair.us/Welcome/Welcome.html',
@@ -44,6 +47,19 @@ class TabState extends ChangeNotifier {
     history.add(url);
     historyIndex = history.length - 1;
     notifyListeners();
+  }
+
+  void updateHistory(String url, String name) {
+    if (currentAppUrl == url) return;
+    if (historyIndex < history.length - 1) {
+      history = history.sublist(0, historyIndex + 1);
+    }
+    currentAppUrl = url;
+    if (name.isNotEmpty) currentAppName = name;
+    if (history.isEmpty || history.last != url) {
+      history.add(url);
+      historyIndex = history.length - 1;
+    }
   }
 
   void goBack() {
@@ -110,6 +126,8 @@ class BrowserProvider extends ChangeNotifier {
       final encodedTabs = jsonEncode(_tabs.map((t) => t.toJson()).toList());
       await prefs.setString('saved_tabs', encodedTabs);
       await prefs.setInt('active_tab_index', _activeTabIndex);
+      await prefs.setBool('isTorEnabled', _isTorEnabled);
+      await prefs.setBool('isAutoplayBlocked', _isAutoplayBlocked);
     } catch (e) {
       debugPrint('Error saving tabs: $e');
     }
@@ -125,6 +143,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isAccountsPanelOpen = false;
   bool _isSearchOpen = false;
   bool _isTorEnabled = false;
+  bool _isAutoplayBlocked = true;
   bool _isSidebarCollapsed = false;
 
   // Getters for active tab wrappers
@@ -139,6 +158,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
   bool get isSearchOpen => _isSearchOpen;
   bool get isTorEnabled => _isTorEnabled;
+  bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
 
   /// Add a new tab (Max 3)
@@ -255,6 +275,13 @@ class BrowserProvider extends ChangeNotifier {
 
   void toggleOpenWidget() {
     _isOpenWidgetOpen = !_isOpenWidgetOpen;
+    notifyListeners();
+  }
+
+  void toggleAutoplayBlocker() async {
+    _isAutoplayBlocked = !_isAutoplayBlocked;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isAutoplayBlocked', _isAutoplayBlocked);
     notifyListeners();
   }
 

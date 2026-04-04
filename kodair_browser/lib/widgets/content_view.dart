@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -88,19 +90,24 @@ class _ContentViewState extends State<ContentView> {
     if (mounted) setState(() => _isEnvLoading = true);
     
     WebViewEnvironment? env;
-    if (useTor) {
-      // Create isolated Tor environment with proxy
-      env = await WebViewEnvironment.create(
-        settings: WebViewEnvironmentSettings(
-          userDataFolder: 'Browser_Tor_Data',
-          additionalBrowserArguments: '--proxy-server="socks5://127.0.0.1:9050"',
-        ),
-      );
-    } else {
-      // Default environment
-      env = await WebViewEnvironment.create(
-        settings: WebViewEnvironmentSettings(userDataFolder: 'Browser_Default_Data'),
-      );
+    
+    // WebViewEnvironment is primarily for Desktop platforms (WebView2 / WebKit)
+    // On mobile/web, InAppWebView manages its own environment automatically.
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      if (useTor) {
+        // Create isolated Tor environment with proxy
+        env = await WebViewEnvironment.create(
+          settings: WebViewEnvironmentSettings(
+            userDataFolder: 'Browser_Tor_Data',
+            additionalBrowserArguments: '--proxy-server="socks5://127.0.0.1:9050"',
+          ),
+        );
+      } else {
+        // Default environment
+        env = await WebViewEnvironment.create(
+          settings: WebViewEnvironmentSettings(userDataFolder: 'Browser_Default_Data'),
+        );
+      }
     }
 
     if (mounted) {
@@ -159,7 +166,13 @@ class _ContentViewState extends State<ContentView> {
 
   @override
   Widget build(BuildContext context) {
+    bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     final browser = context.watch<BrowserProvider>();
+
+    // Dynamically apply User Preference to Chromium Engine
+    _webViewController?.setSettings(settings: InAppWebViewSettings(
+      mediaPlaybackRequiresUserGesture: browser.isAutoplayBlocked,
+    ));
 
     // Navigate when URL changes
     if (_webViewController != null && _lastUrl != widget.tabState.currentAppUrl) {
@@ -181,7 +194,7 @@ class _ContentViewState extends State<ContentView> {
             }
           },
             child: GestureDetector(
-              onVerticalDragUpdate: !_isPointerLocked
+              onVerticalDragUpdate: (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux) && !_isPointerLocked)
                   ? (details) {
                       _forwardScroll(0, -details.delta.dy * 2);
                     }
@@ -203,7 +216,7 @@ class _ContentViewState extends State<ContentView> {
                   javaScriptEnabled: true,
                   domStorageEnabled: true,
                   allowsInlineMediaPlayback: true,
-                  mediaPlaybackRequiresUserGesture: false,
+                  mediaPlaybackRequiresUserGesture: context.read<BrowserProvider>().isAutoplayBlocked,
                   allowsBackForwardNavigationGestures: true,
                   transparentBackground: true,
                   supportZoom: true,
@@ -220,18 +233,35 @@ class _ContentViewState extends State<ContentView> {
                 ]),
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
+                  widget.tabState.webViewController = controller;
                   _lastUrl = widget.tabState.currentAppUrl;
                 },
                 onLoadStart: (controller, url) {
                   if (mounted) setState(() => _isLoading = true);
                 },
                 onLoadStop: (controller, url) async {
-                  if (mounted) setState(() => _isLoading = false);
+                  if (!_isEnvLoading && mounted) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                    final browser = context.read<BrowserProvider>();
+                    browser.activeTab.updateHistory(url.toString(), '');
 
-                  // Inject OpenWidget on the Welcome page
-                  final urlStr = url?.toString() ?? '';
-                  if (urlStr.contains('Welcome')) {
-                    await controller.evaluateJavascript(source: '''
+                    // Inline Auto-Play Block for YouTube
+                    if (url.toString().contains('youtube.com')) {
+                      controller.evaluateJavascript(source: '''
+                        setInterval(() => {
+                          if (!window.location.href.includes('/watch')) {
+                            document.querySelectorAll('video').forEach(v => v.pause());
+                          }
+                        }, 500);
+                      ''');
+                    }
+
+                    // Inject OpenWidget on the Welcome page
+                    final urlStr = url?.toString() ?? '';
+                    if (urlStr.contains('Welcome')) {
+                      await controller.evaluateJavascript(source: '''
 (function() {
   if (window.OpenWidget) return;
   window.__ow = window.__ow || {};
@@ -245,6 +275,7 @@ class _ContentViewState extends State<ContentView> {
   document.head.appendChild(s);
 })();
 ''');
+                    }
                   }
                 },
                 onReceivedError: (controller, request, error) {

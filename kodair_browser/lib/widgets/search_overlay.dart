@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../providers/browser_provider.dart';
 import '../theme/kodair_theme.dart';
@@ -175,24 +177,30 @@ class _SearchOverlayState extends State<SearchOverlay>
   Widget build(BuildContext context) {
     final browser = context.read<BrowserProvider>();
     final screenSize = MediaQuery.of(context).size;
+    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
     return FadeTransition(
       opacity: _fadeAnim,
       child: GestureDetector(
         onTap: () => browser.toggleSearch(),
         child: Container(
-          color: Colors.black.withAlpha(80),
-          child: Center(
+          color: Colors.black.withAlpha(isMobile ? 160 : 80),
+          alignment: isMobile ? Alignment.topCenter : Alignment.center,
+          child: SafeArea(
+            bottom: false,
             child: ScaleTransition(
               scale: _scaleAnim,
               child: GestureDetector(
                 onTap: () {},
                 child: Container(
-                  width: screenSize.width * 0.55,
-                  constraints: const BoxConstraints(maxHeight: 500),
+                  width: isMobile ? double.infinity : screenSize.width * 0.55,
+                  constraints: BoxConstraints(maxHeight: isMobile ? screenSize.height * 0.8 : 500),
+                  margin: isMobile ? const EdgeInsets.symmetric(horizontal: 0) : null,
                   decoration: BoxDecoration(
                     color: KodairTheme.searchBg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: isMobile 
+                        ? const BorderRadius.vertical(bottom: Radius.circular(16))
+                        : BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withAlpha(80),
@@ -251,7 +259,10 @@ class _SearchOverlayState extends State<SearchOverlay>
                 hintStyle: TextStyle(color: Colors.white54, fontSize: 16),
                 border: InputBorder.none,
               ),
-              onSubmitted: (value) => _handleSearch(value, browser),
+              onSubmitted: (value) {
+                _handleSearch(value, browser);
+                browser.toggleSearch();
+              },
             ),
           ),
           IconButton(

@@ -30,8 +30,49 @@ class SettingsPanel extends StatelessWidget {
             'Adjust Browser Settings',
           ),
           _buildTorToggle(context, browser),
+          _buildAutoplayToggle(context, browser),
           _buildFullscreenCard(context),
           _buildAboutCard(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoplayToggle(BuildContext context, BrowserProvider browser) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: browser.isAutoplayBlocked
+                  ? KodairTheme.primaryBlue
+                  : const Color(0xFFCCCCCC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Text(
+              'Autoplay Blocker',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: browser.isAutoplayBlocked ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Block Autoplay', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('Prevents media from auto-playing', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            value: browser.isAutoplayBlocked,
+            activeColor: KodairTheme.primaryBlue,
+            onChanged: (val) => browser.toggleAutoplayBlocker(),
+          ),
         ],
       ),
     );

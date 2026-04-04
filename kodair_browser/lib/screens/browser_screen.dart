@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
@@ -9,6 +11,7 @@ import '../widgets/info_panel.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/accounts_panel.dart';
 import '../widgets/search_overlay.dart';
+import '../widgets/mobile_bottom_bar.dart';
 import '../models/kodair_app.dart';
 import '../data/app_registry.dart';
 
@@ -34,73 +37,130 @@ class BrowserScreen extends StatelessWidget {
           const IgnorePointer(child: _FloatingCircles()),
 
           // ===== MAIN LAYOUT =====
-          Column(
-            children: [
-              // Custom window title bar with ALL controls
-              _buildCustomTitleBar(context, browser),
-
-              // Sidebar + Content
-              Expanded(
-                child: Row(
-                  children: [
-                    if (!(isMobile && browser.isSidebarCollapsed))
-                      const KodBar(),
-                    Expanded(
-                      child: IndexedStack(
-                        index: browser.activeTabIndex,
-                        children: <Widget>[
-                          for (final tab in browser.tabs)
-                            ContentView(tabState: tab),
-                        ],
+          SafeArea(
+            bottom: false,
+            top: !isMobile,
+            child: Column(
+              children: [
+                // Mobile Top Status Bar Header (Edge-To-Edge safe)
+                if (isMobile)
+                  Container(
+                    color: KodairTheme.appBarBg,
+                    width: double.infinity,
+                    child: SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(browser.currentAppName.isEmpty ? 'Kodair WebOS' : browser.currentAppName, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                            Expanded(child: Text('  ${browser.currentAppUrl.replaceAll('https://', '').replaceAll('http://', '')}', style: const TextStyle(color: Colors.white38, fontSize: 10), textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
+
+                // Custom window title bar with ALL controls (hidden on mobile)
+                _buildCustomTitleBar(context, browser),
+
+                // Sidebar + Content
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (!(isMobile && browser.isSidebarCollapsed))
+                        const KodBar(),
+                      Expanded(
+                        child: IndexedStack(
+                          index: browser.activeTabIndex,
+                          children: <Widget>[
+                            for (final tab in browser.tabs)
+                              ContentView(tabState: tab),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                
+                // Bottom WebOS Bar (Mobile Only)
+                if (isMobile)
+                  const MobileBottomBar(),
+              ],
+            ),
           ),
 
           // ===== OVERLAY PANELS =====
           if (browser.isInfoPanelOpen)
-            Positioned(
-              left: sidebarWidth,
-              top: 32,
-              bottom: 0,
-              width: panelWidth,
-              child: const InfoPanel(),
-            ),
+            isMobile
+                ? Positioned.fill(
+                    child: Container(
+                      color: KodairTheme.sizeBarBg,
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            const InfoPanel(),
+                            Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => browser.togglePanel(PanelType.info))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Positioned(
+                    left: sidebarWidth,
+                    top: kIsWeb || (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) ? 0 : 32,
+                    bottom: 0,
+                    width: panelWidth,
+                    child: const InfoPanel(),
+                  ),
           if (browser.isSettingsPanelOpen)
-            Positioned(
-              left: sidebarWidth,
-              top: 32,
-              bottom: 0,
-              width: panelWidth,
-              child: const SettingsPanel(),
-            ),
+            isMobile
+                ? Positioned.fill(
+                    child: Container(
+                      color: KodairTheme.sizeBarBg,
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            const SettingsPanel(),
+                            Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => browser.togglePanel(PanelType.settings))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Positioned(
+                    left: sidebarWidth,
+                    top: kIsWeb || (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) ? 0 : 32,
+                    bottom: 0,
+                    width: panelWidth,
+                    child: const SettingsPanel(),
+                  ),
           if (browser.isAccountsPanelOpen)
-            Positioned(
-              left: sidebarWidth,
-              top: 32,
-              bottom: 0,
-              width: panelWidth,
-              child: const AccountsPanel(),
-            ),
+            isMobile
+                ? Positioned.fill(
+                    child: Container(
+                      color: KodairTheme.sizeBarBg,
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            const AccountsPanel(),
+                            Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => browser.togglePanel(PanelType.accounts))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Positioned(
+                    left: sidebarWidth,
+                    top: kIsWeb || (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) ? 0 : 32,
+                    bottom: 0,
+                    width: panelWidth,
+                    child: const AccountsPanel(),
+                  ),
 
           // ===== SEARCH OVERLAY =====
           if (browser.isSearchOpen) const SearchOverlay(),
-
-
-          // ===== MOBILE SIDEBAR TOGGLE =====
-          if (isMobile && browser.isSidebarCollapsed)
-            Positioned(
-              left: 8,
-              top: 40,
-              child: FloatingActionButton.small(
-                onPressed: () => browser.toggleSidebar(),
-                backgroundColor: KodairTheme.primaryBlue.withAlpha(200),
-                child: const Icon(Icons.menu, color: Colors.white),
-              ),
-            ),
         ],
       ),
     );
@@ -108,6 +168,10 @@ class BrowserScreen extends StatelessWidget {
 
   /// Custom title bar with ALL navigation controls merged in, PLUS TABS!
   Widget _buildCustomTitleBar(BuildContext context, BrowserProvider browser) {
+    if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
+      return const SizedBox.shrink(); // Hide desktop custom title bar on mobile
+    }
+
     return Container(
       height: 32,
       color: KodairTheme.sizeBarBg,

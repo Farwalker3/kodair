@@ -1,0 +1,61 @@
+name: Auto Release Builder
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'kodair_browser/pubspec.yaml' # Triggers automatically when you increment your Flutter version number
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.4' # Match your local Dart SDK requirements
+          channel: 'stable'
+
+      - name: Read Version from Pubspec
+        id: get_version
+        run: |
+          $content = Get-Content "kodair_browser/pubspec.yaml" -Raw
+          if ($content -match "(?m)^version:\s+(.*?)\s*$") {
+            $version = $matches[1]
+            echo "VERSION=$version" >> $env:GITHUB_ENV
+          } else {
+            echo "Version not found!"
+            exit 1
+          }
+
+      - name: Build Android APK
+        working-directory: ./kodair_browser
+        run: flutter build apk --release
+
+      - name: Build Windows Desktop
+        working-directory: ./kodair_browser
+        run: flutter build windows --release
+
+      - name: Compile Windows Installer (InnoSetup)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: kodair_setup.iss
+
+      - name: Publish Automated GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Kodair Browser v${{ env.VERSION }}
+          body: "Automated Native Release Pipeline triggered by version increment. \n\nIncludes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
+          files: |
+            kodair_browser/build/app/outputs/flutter-apk/app-release.apk
+            Output/Kodair_Installer.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
