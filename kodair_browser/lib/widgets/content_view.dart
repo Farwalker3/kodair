@@ -169,9 +169,14 @@ class _ContentViewState extends State<ContentView> {
     bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     final browser = context.watch<BrowserProvider>();
 
+    bool shouldBlock = browser.isAutoplayBlocked;
+    if (widget.tabState.currentAppUrl.contains('youtube.com/shorts')) {
+      shouldBlock = false;
+    }
+
     // Dynamically apply User Preference to Chromium Engine
     _webViewController?.setSettings(settings: InAppWebViewSettings(
-      mediaPlaybackRequiresUserGesture: browser.isAutoplayBlocked,
+      mediaPlaybackRequiresUserGesture: shouldBlock,
     ));
 
     // Navigate when URL changes
@@ -216,7 +221,7 @@ class _ContentViewState extends State<ContentView> {
                   javaScriptEnabled: true,
                   domStorageEnabled: true,
                   allowsInlineMediaPlayback: true,
-                  mediaPlaybackRequiresUserGesture: context.read<BrowserProvider>().isAutoplayBlocked,
+                  mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
                   allowsBackForwardNavigationGestures: true,
                   transparentBackground: true,
                   supportZoom: true,

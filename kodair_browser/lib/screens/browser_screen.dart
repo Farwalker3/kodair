@@ -22,7 +22,8 @@ class BrowserScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final browser = context.watch<BrowserProvider>();
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final sidebarWidth = isMobile && browser.isSidebarCollapsed ? 0.0 : 95.0;
     final panelWidth = isMobile
         ? screenWidth - sidebarWidth
@@ -69,8 +70,10 @@ class BrowserScreen extends StatelessWidget {
                 Expanded(
                   child: Row(
                     children: [
-                      if (!(isMobile && browser.isSidebarCollapsed))
-                        const KodBar(),
+                      Offstage(
+                        offstage: isMobile && (browser.isSidebarCollapsed || isLandscape),
+                        child: const KodBar(),
+                      ),
                       Expanded(
                         child: IndexedStack(
                           index: browser.activeTabIndex,
@@ -86,7 +89,10 @@ class BrowserScreen extends StatelessWidget {
                 
                 // Bottom WebOS Bar (Mobile Only)
                 if (isMobile)
-                  const MobileBottomBar(),
+                  Offstage(
+                    offstage: isLandscape,
+                    child: const MobileBottomBar(),
+                  ),
               ],
             ),
           ),
