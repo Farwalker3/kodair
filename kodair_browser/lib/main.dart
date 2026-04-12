@@ -69,10 +69,17 @@ class _UpdateCheckerState extends State<UpdateChecker> {
       UpdateService.showUpdateDialog(context);
     });
     
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isIOS) {
       HomeWidget.setAppGroupId('us.kodair.kodair_browser');
-      HomeWidget.initiallyLaunchedFromHomeWidget().then(_checkForWidgetLaunch);
-      HomeWidget.widgetClicked.listen(_checkForWidgetLaunch);
+    }
+    
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        HomeWidget.initiallyLaunchedFromHomeWidget().then(_checkForWidgetLaunch);
+        HomeWidget.widgetClicked.listen(_checkForWidgetLaunch);
+      } catch (e) {
+        debugPrint('HomeWidget Init Error: $e');
+      }
     }
   }
 

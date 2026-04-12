@@ -25,13 +25,13 @@ class UpdateService {
   static Future<UpdateInfo> checkForUpdates() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version; // e.g. "1.0.0"
+      final currentVersion = packageInfo.version.split('+').first; // e.g. "1.0.0"
 
       final response = await http.get(Uri.parse(_repoUrl));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String latestTag = data['tag_name'] ?? '';
-        String latestVersion = latestTag.replaceAll(RegExp(r'^[vV]'), ''); // strips 'v'
+        String latestVersion = latestTag.replaceAll(RegExp(r'^[vV]'), '').split('+').first; // strips 'v' and suffix
         
         // Simple version compare
         bool isUpdateAvailable = _compareVersions(currentVersion, latestVersion) < 0;
