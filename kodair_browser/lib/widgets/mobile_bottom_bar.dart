@@ -41,8 +41,14 @@ class MobileBottomBar extends StatelessWidget {
 
           // 3. Search Field / Toggle
           IconButton(
-            icon: const Icon(Icons.search, size: 24, color: Colors.white),
+            icon: Icon(Icons.search, size: 24, color: browser.isSearchOpen ? KodairTheme.primaryBlue : Colors.white),
             onPressed: () => browser.toggleSearch(),
+          ),
+
+          // 4. Trails Manager Toggle
+          IconButton(
+            icon: Icon(Icons.route, size: 24, color: browser.isTrailsOpen ? KodairTheme.primaryBlue : Colors.white),
+            onPressed: () => browser.toggleTrails(),
           ),
 
           // 4. Tabs Manager

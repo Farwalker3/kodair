@@ -10,6 +10,7 @@ import '../widgets/content_view.dart';
 import '../widgets/info_panel.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/accounts_panel.dart';
+import '../widgets/trails_manager.dart';
 import '../widgets/search_overlay.dart';
 import '../widgets/mobile_bottom_bar.dart';
 import '../models/kodair_app.dart';
@@ -163,6 +164,27 @@ class BrowserScreen extends StatelessWidget {
                     bottom: 0,
                     width: panelWidth,
                     child: const AccountsPanel(),
+                  ),
+          if (browser.isTrailsOpen)
+            isMobile
+                ? Positioned.fill(
+                    child: Container(
+                      color: KodairTheme.sizeBarBg,
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            const TrailsManager(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Positioned(
+                    left: sidebarWidth,
+                    top: kIsWeb || (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) ? 0 : 32,
+                    bottom: 0,
+                    width: panelWidth,
+                    child: const TrailsManager(),
                   ),
 
           // ===== SEARCH OVERLAY =====

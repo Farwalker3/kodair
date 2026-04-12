@@ -240,6 +240,37 @@ class _ContentViewState extends State<ContentView> {
                       shouldBlock = false;
                     }
                     controller.setSettings(settings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                      allowsInlineMediaPlayback: true,
+                      allowsBackForwardNavigationGestures: true,
+                      transparentBackground: true,
+                      supportZoom: true,
+                      useWideViewPort: true,
+                      verticalScrollBarEnabled: true,
+                      horizontalScrollBarEnabled: true,
+                      mediaPlaybackRequiresUserGesture: shouldBlock,
+                    ));
+                  }
+                },
+                onUpdateVisitedHistory: (controller, url, isReload) async {
+                  if (mounted && url != null) {
+                    final browser = context.read<BrowserProvider>();
+                    browser.activeTab.updateHistory(url.toString(), '');
+                    bool shouldBlock = browser.isAutoplayBlocked;
+                    if (url.toString().contains('youtube.com/shorts')) {
+                      shouldBlock = false;
+                    }
+                    await controller.setSettings(settings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                      allowsInlineMediaPlayback: true,
+                      allowsBackForwardNavigationGestures: true,
+                      transparentBackground: true,
+                      supportZoom: true,
+                      useWideViewPort: true,
+                      verticalScrollBarEnabled: true,
+                      horizontalScrollBarEnabled: true,
                       mediaPlaybackRequiresUserGesture: shouldBlock,
                     ));
                   }
@@ -256,7 +287,7 @@ class _ContentViewState extends State<ContentView> {
                     if (url.toString().contains('youtube.com')) {
                       controller.evaluateJavascript(source: '''
                         setInterval(() => {
-                          if (!window.location.href.includes('/watch')) {
+                          if (!window.location.href.includes('/watch') && !window.location.href.includes('/shorts')) {
                             document.querySelectorAll('video').forEach(v => v.pause());
                           }
                         }, 500);

@@ -76,6 +76,8 @@ class KodBar extends StatelessWidget {
     // Create unified list of all buttons (apps + utility)
     final List<Widget> allButtons = apps.map((app) => _appButton(context, app, browser)).toList();
     // Add utility buttons at the end
+    allButtons.add(_utilBtn(Icons.route, 'Trails',
+        () => browser.toggleTrails()));
     allButtons.add(_utilBtn(Icons.account_circle, 'Account',
         () => browser.togglePanel(PanelType.accounts)));
     allButtons.add(_utilBtn(Icons.settings, 'Settings',

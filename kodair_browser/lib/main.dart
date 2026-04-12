@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'dart:io';
 import 'providers/browser_provider.dart';
+import 'providers/trails_provider.dart';
+import 'providers/auth_provider.dart';
 import 'theme/kodair_theme.dart';
 import 'screens/browser_screen.dart';
 import 'utils/native_env.dart';
@@ -39,8 +41,12 @@ class KodairBrowserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BrowserProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BrowserProvider()),
+        ChangeNotifierProvider(create: (_) => TrailsProvider()),
+      ],
       child: MaterialApp(
         title: 'Kodair Browser',
         debugShowCheckedModeBanner: false,

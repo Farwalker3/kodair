@@ -142,6 +142,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isSettingsPanelOpen = false;
   bool _isAccountsPanelOpen = false;
   bool _isSearchOpen = false;
+  bool _isTrailsOpen = false;
   bool _isTorEnabled = false;
   bool _isAutoplayBlocked = true;
   bool _isSidebarCollapsed = false;
@@ -157,9 +158,22 @@ class BrowserProvider extends ChangeNotifier {
   bool get isSettingsPanelOpen => _isSettingsPanelOpen;
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
   bool get isSearchOpen => _isSearchOpen;
+  bool get isTrailsOpen => _isTrailsOpen;
   bool get isTorEnabled => _isTorEnabled;
   bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
+
+  void toggleTrails() {
+    _isTrailsOpen = !_isTrailsOpen;
+    if (_isTrailsOpen) {
+      _isSearchOpen = false;
+      _isAccountsPanelOpen = false;
+      _isInfoPanelOpen = false;
+      _isSettingsPanelOpen = false;
+      _isSidebarCollapsed = true;
+    }
+    notifyListeners();
+  }
 
   /// Add a new tab (Max 3)
   void addTab(String url, String name) {

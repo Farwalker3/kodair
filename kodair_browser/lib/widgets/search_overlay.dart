@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../providers/browser_provider.dart';
+import '../providers/trails_provider.dart';
+import '../models/trail_node.dart';
 import '../theme/kodair_theme.dart';
 
 class SearchOverlay extends StatefulWidget {
@@ -63,6 +65,7 @@ class _SearchOverlayState extends State<SearchOverlay>
   }
 
   void _onTextChanged() {
+    setState(() {}); // Instant local reactivity for Trails search
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 600), () {
       final text = _controller.text.trim();
@@ -176,8 +179,12 @@ class _SearchOverlayState extends State<SearchOverlay>
   @override
   Widget build(BuildContext context) {
     final browser = context.read<BrowserProvider>();
+    final trails = context.watch<TrailsProvider>();
     final screenSize = MediaQuery.of(context).size;
     final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+    final query = _controller.text.trim();
+    final matchingTrails = query.isNotEmpty ? trails.searchTrails(query) : <TrailNode>[];
 
     return FadeTransition(
       opacity: _fadeAnim,
@@ -219,8 +226,41 @@ class _SearchOverlayState extends State<SearchOverlay>
                       if (_answerLoading) _buildAnswerLoading(),
                       if (_answerText != null) _buildAnswerCard(browser),
 
+                      // Trails Match Results
+                      if (matchingTrails.isNotEmpty)
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: KodairTheme.appBarBg.withAlpha(100),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: matchingTrails.length > 4 ? 4 : matchingTrails.length,
+                            itemBuilder: (context, i) {
+                              final match = matchingTrails[i];
+                              return ListTile(
+                                leading: Icon(match.isFolder ? Icons.folder : Icons.route, color: KodairTheme.primaryBlue, size: 20),
+                                title: Text(match.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold), maxLines: 1),
+                                subtitle: match.url != null ? Text(match.url!, style: const TextStyle(color: Colors.white38, fontSize: 11), maxLines: 1) : null,
+                                dense: true,
+                                onTap: () {
+                                  if (match.url != null) {
+                                    browser.navigateToApp(match.url!, name: match.title);
+                                  } else {
+                                    browser.toggleTrails();
+                                    browser.toggleSearch();
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                        ),
+
                       // Quick actions
-                      _buildQuickActions(browser),
+                      if (matchingTrails.isEmpty) _buildQuickActions(browser),
                     ],
                   ),
                 ),
