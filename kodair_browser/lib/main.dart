@@ -7,6 +7,7 @@ import 'theme/kodair_theme.dart';
 import 'screens/browser_screen.dart';
 import 'utils/native_env.dart';
 import 'services/update_service.dart';
+import 'package:home_widget/home_widget.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,22 @@ class _UpdateCheckerState extends State<UpdateChecker> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService.showUpdateDialog(context);
     });
+    
+    if (Platform.isAndroid || Platform.isIOS) {
+      HomeWidget.setAppGroupId('us.kodair.kodair_browser');
+      HomeWidget.initiallyLaunchedFromHomeWidget().then(_checkForWidgetLaunch);
+      HomeWidget.widgetClicked.listen(_checkForWidgetLaunch);
+    }
+  }
+
+  void _checkForWidgetLaunch(Uri? uri) {
+    if (!mounted) return;
+    if (uri != null && uri.host == 'search') {
+      final browser = context.read<BrowserProvider>();
+      if (!browser.isSearchOpen) {
+        browser.toggleSearch();
+      }
+    }
   }
 
   @override
