@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../providers/browser_provider.dart';
-import '../data/app_registry.dart';
+import '../providers/sidebar_provider.dart';
 import '../models/kodair_app.dart';
 import '../theme/kodair_theme.dart';
 
@@ -71,10 +71,15 @@ class KodBar extends StatelessWidget {
   }
 
   Widget _buildAppGrid(BuildContext context, BrowserProvider browser) {
-    final apps = kodairApps.where((a) => !a.isWidget).toList();
+    final sidebar = context.watch<SidebarProvider>();
+    final apps = sidebar.apps.where((a) => !a.isWidget).toList();
     
     // Create unified list of all buttons (apps + utility)
-    final List<Widget> allButtons = apps.map((app) => _appButton(context, app, browser)).toList();
+    final List<Widget> allButtons = apps.map((app) => _appButton(context, app, browser, sidebar)).toList();
+    
+    // Add custom app button
+    allButtons.add(_addAppBtn(context, sidebar));
+    
     // Add utility buttons at the end
     allButtons.add(_utilBtn(Icons.route, 'Trails',
         () => browser.toggleTrails()));
@@ -106,37 +111,14 @@ class KodBar extends StatelessWidget {
     return Column(children: rows);
   }
 
-  Widget _appButton(BuildContext context, KodairApp app, BrowserProvider browser) {
+  Widget _appButton(BuildContext context, KodairApp app, BrowserProvider browser, SidebarProvider sidebar) {
     final isSelected = browser.currentAppUrl == app.url;
     return Tooltip(
       message: app.name,
       child: GestureDetector(
         onTap: () => browser.navigateToApp(app.url, name: app.name),
-        onSecondaryTapDown: (details) {
-          showMenu(
-            context: context,
-            position: RelativeRect.fromLTRB(
-              details.globalPosition.dx,
-              details.globalPosition.dy,
-              details.globalPosition.dx,
-              details.globalPosition.dy,
-            ),
-            color: KodairTheme.appBarBg,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            items: <PopupMenuEntry<dynamic>>[
-              PopupMenuItem(
-                onTap: () => browser.addTab(app.url, app.name),
-                child: const Row(
-                  children: [
-                    Icon(Icons.open_in_new, size: 18, color: Colors.white70),
-                    SizedBox(width: 8),
-                    Text('Open in New Tab', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+        onSecondaryTapDown: (details) => _showAppContextMenu(context, details.globalPosition, app, browser, sidebar),
+        onLongPress: () => _showAppContextMenu(context, Offset.zero, app, browser, sidebar),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 40,
@@ -165,7 +147,188 @@ class KodBar extends StatelessWidget {
     );
   }
 
+  void _showAppContextMenu(BuildContext context, Offset position, KodairApp app, BrowserProvider browser, SidebarProvider sidebar) {
+    final pos = position == Offset.zero
+        ? RelativeRect.fromLTRB(100, 300, 100, 300)
+        : RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy);
 
+    showMenu(
+      context: context,
+      position: pos,
+      color: KodairTheme.appBarBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      items: <PopupMenuEntry<dynamic>>[
+        PopupMenuItem(
+          onTap: () => browser.addTab(app.url, app.name),
+          child: const Row(
+            children: [
+              Icon(Icons.open_in_new, size: 18, color: Colors.white70),
+              SizedBox(width: 8),
+              Text('Open in New Tab', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        PopupMenuItem(
+          onTap: () => _showEditAppDialog(context, app, sidebar),
+          child: const Row(
+            children: [
+              Icon(Icons.edit, size: 18, color: Colors.white70),
+              SizedBox(width: 8),
+              Text('Edit App', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          onTap: () => sidebar.removeApp(app.id),
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text('Remove', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showEditAppDialog(BuildContext context, KodairApp app, SidebarProvider sidebar) {
+    final nameCtrl = TextEditingController(text: app.name);
+    final urlCtrl = TextEditingController(text: app.url);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KodairTheme.darkBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Edit App', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Name',
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: const Color(0xFF1A1A2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'URL',
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: const Color(0xFF1A1A2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              sidebar.editApp(app.id, name: nameCtrl.text.trim(), url: urlCtrl.text.trim());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: KodairTheme.primaryBlue),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addAppBtn(BuildContext context, SidebarProvider sidebar) {
+    return Tooltip(
+      message: 'Add App',
+      child: GestureDetector(
+        onTap: () => _showAddAppDialog(context, sidebar),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: KodairTheme.appButtonBg.withAlpha(100),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withAlpha(60), width: 1),
+          ),
+          child: const Center(
+            child: Icon(Icons.add, size: 20, color: Colors.white70),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddAppDialog(BuildContext context, SidebarProvider sidebar) {
+    final nameCtrl = TextEditingController();
+    final urlCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KodairTheme.darkBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Add Custom App', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'App Name',
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: const Color(0xFF1A1A2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'URL',
+                hintText: 'https://example.com',
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: const Color(0xFF1A1A2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isNotEmpty && urlCtrl.text.trim().isNotEmpty) {
+                sidebar.addApp(name: nameCtrl.text.trim(), url: urlCtrl.text.trim());
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: KodairTheme.primaryGreen, foregroundColor: Colors.black87),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _utilBtn(IconData icon, String tooltip, VoidCallback onTap) {
     return Tooltip(
@@ -186,8 +349,6 @@ class KodBar extends StatelessWidget {
       ),
     );
   }
-
-
 
   Widget _buildBootBar(BuildContext context, BrowserProvider browser) {
     return GestureDetector(

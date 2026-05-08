@@ -101,6 +101,7 @@ class BrowserProvider extends ChangeNotifier {
           if (_activeTabIndex >= _tabs.length) _activeTabIndex = _tabs.length - 1;
         }
       }
+      _isSidebarCollapsed = prefs.getBool('isSidebarCollapsed') ?? false;
     } catch (e) {
       debugPrint('Error loading tabs: $e');
     }
@@ -128,6 +129,7 @@ class BrowserProvider extends ChangeNotifier {
       await prefs.setInt('active_tab_index', _activeTabIndex);
       await prefs.setBool('isTorEnabled', _isTorEnabled);
       await prefs.setBool('isAutoplayBlocked', _isAutoplayBlocked);
+      await prefs.setBool('isSidebarCollapsed', _isSidebarCollapsed);
     } catch (e) {
       debugPrint('Error saving tabs: $e');
     }
@@ -277,9 +279,10 @@ class BrowserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggle sidebar collapse (for mobile)
+  /// Toggle sidebar collapse (all platforms)
   void toggleSidebar() {
     _isSidebarCollapsed = !_isSidebarCollapsed;
+    _saveState();
     notifyListeners();
   }
 

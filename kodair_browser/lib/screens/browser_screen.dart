@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../providers/browser_provider.dart';
+import '../providers/sidebar_provider.dart';
 import '../theme/kodair_theme.dart';
 import '../widgets/kod_bar.dart';
 import '../widgets/content_view.dart';
@@ -13,8 +14,6 @@ import '../widgets/accounts_panel.dart';
 import '../widgets/trails_manager.dart';
 import '../widgets/search_overlay.dart';
 import '../widgets/mobile_bottom_bar.dart';
-import '../models/kodair_app.dart';
-import '../data/app_registry.dart';
 
 class BrowserScreen extends StatelessWidget {
   const BrowserScreen({super.key});
@@ -25,7 +24,7 @@ class BrowserScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final sidebarWidth = isMobile && browser.isSidebarCollapsed ? 0.0 : 95.0;
+    final sidebarWidth = browser.isSidebarCollapsed ? 0.0 : 95.0;
     final panelWidth = isMobile
         ? screenWidth - sidebarWidth
         : (screenWidth - sidebarWidth) * 0.35;
@@ -71,8 +70,11 @@ class BrowserScreen extends StatelessWidget {
                 Expanded(
                   child: Row(
                     children: [
-                      Offstage(
-                        offstage: isMobile && (browser.isSidebarCollapsed || isLandscape),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: browser.isSidebarCollapsed ? 0 : 95,
+                        clipBehavior: Clip.hardEdge,
+                        decoration: const BoxDecoration(),
                         child: const KodBar(),
                       ),
                       Expanded(
@@ -212,6 +214,16 @@ class BrowserScreen extends StatelessWidget {
           _TitleBarBtn(icon: Icons.arrow_back, hoverColor: KodairTheme.backBlue, onTap: browser.canGoBack ? () => browser.goBack() : null, tooltip: 'Back'),
           _TitleBarBtn(icon: Icons.arrow_forward, hoverColor: KodairTheme.forwardCyan, onTap: browser.canGoForward ? () => browser.goForward() : null, tooltip: 'Forward'),
 
+          const SizedBox(width: 4),
+
+          // --- SIDEBAR TOGGLE ---
+          _TitleBarBtn(
+            icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
+            hoverColor: KodairTheme.primaryBlue,
+            onTap: () => browser.toggleSidebar(),
+            tooltip: browser.isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
+          ),
+
           const SizedBox(width: 8),
 
           // --- CENTER: TABS ---
@@ -337,16 +349,11 @@ class BrowserScreen extends StatelessWidget {
       items: <PopupMenuEntry<dynamic>>[
         PopupMenuItem(
           onTap: () {
-            // Save tab as an app in the sidebar (registry)
-            kodairApps.add(
-              KodairApp(
-                name: tab.currentAppName,
-                url: tab.currentAppUrl,
-                iconData: Icons.web,
-              ),
+            // Save tab as a custom app in the sidebar via SidebarProvider
+            context.read<SidebarProvider>().addApp(
+              name: tab.currentAppName,
+              url: tab.currentAppUrl,
             );
-            // Force rebuild of UI to show new app in sidebar
-            browser.forceRebuild();
           },
           child: const Row(
             children: [

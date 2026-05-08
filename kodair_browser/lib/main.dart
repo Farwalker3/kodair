@@ -5,6 +5,7 @@ import 'dart:io';
 import 'providers/browser_provider.dart';
 import 'providers/trails_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/sidebar_provider.dart';
 import 'theme/kodair_theme.dart';
 import 'screens/browser_screen.dart';
 import 'utils/native_env.dart';
@@ -46,6 +47,7 @@ class KodairBrowserApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BrowserProvider()),
         ChangeNotifierProvider(create: (_) => TrailsProvider()),
+        ChangeNotifierProvider(create: (_) => SidebarProvider()),
       ],
       child: MaterialApp(
         title: 'Kodair Browser',
