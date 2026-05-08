@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../providers/browser_provider.dart';
 import '../providers/sidebar_provider.dart';
+import '../providers/edition_provider.dart';
 import '../theme/kodair_theme.dart';
 import '../widgets/kod_bar.dart';
 import '../widgets/content_view.dart';
@@ -472,12 +473,15 @@ class _AnimatedGradientBgState extends State<_AnimatedGradientBg>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
+    final editionConfig = context.watch<EditionProvider>().config;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF6688FF), Color(0xFF66FF88)],
+          colors: [editionConfig.backgroundTop, editionConfig.backgroundBottom],
         ),
       ),
       child: Stack(
@@ -494,6 +498,7 @@ class _AnimatedGradientBgState extends State<_AnimatedGradientBg>
     return AnimatedBuilder(
       animation: ctrl,
       builder: (context, _) {
+        final eConfig = context.watch<EditionProvider>().config;
         final offset =
             Tween<double>(begin: -0.25, end: 0.25).animate(ctrl).value;
         return Positioned.fill(
@@ -507,7 +512,7 @@ class _AnimatedGradientBgState extends State<_AnimatedGradientBg>
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: const [Color(0xFF0033FF), Color(0xFF00FF22)],
+                    colors: [eConfig.backgroundTop.withAlpha(180), eConfig.backgroundBottom.withAlpha(180)],
                     transform:
                         GradientRotation(angleDeg * 3.14159 / 180),
                   ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/browser_provider.dart';
+import '../providers/edition_provider.dart';
+import '../providers/sidebar_provider.dart';
 import '../services/update_service.dart';
 import '../theme/kodair_theme.dart';
 
@@ -29,9 +31,11 @@ class SettingsPanel extends StatelessWidget {
             'Settings',
             'Adjust Browser Settings',
           ),
+          _buildEditionSelector(context),
           _buildTorToggle(context, browser),
           _buildAutoplayToggle(context, browser),
           _buildFullscreenCard(context),
+          _buildResetCard(context),
           _buildAboutCard(context),
         ],
       ),
@@ -311,6 +315,234 @@ class SettingsPanel extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditionSelector(BuildContext context) {
+    final editionProv = context.watch<EditionProvider>();
+    final active = editionProv.edition;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: editionProv.config.primaryColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: const Text(
+              'Browser Edition',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: SizedBox(
+              height: 72,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: EditionProvider.editions.entries.map((entry) {
+                  final edition = entry.key;
+                  final config = entry.value;
+                  final isActive = edition == active;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => editionProv.setEdition(edition),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 64,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [config.sidebarTop, config.sidebarBottom],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: isActive
+                              ? Border.all(color: Colors.white, width: 2.5)
+                              : Border.all(color: Colors.transparent, width: 2.5),
+                          boxShadow: isActive
+                              ? [BoxShadow(color: config.primaryColor.withAlpha(120), blurRadius: 8)]
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(config.icon, size: 22, color: Colors.white),
+                            const SizedBox(height: 4),
+                            Text(
+                              config.displayName,
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+            child: Text(
+              editionProv.config.tagline,
+              style: TextStyle(
+                color: editionProv.config.primaryColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResetCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFD32F2F),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: const Text(
+              'Danger Zone',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                const Text(
+                  'Reset sidebar apps to factory defaults.\nThis cannot be undone.',
+                  style: TextStyle(fontSize: 11, color: Colors.black87),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _showResetConfirmation(context),
+                  icon: const Icon(Icons.warning_amber, size: 16),
+                  label: const Text('Reset to Defaults'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD32F2F),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(36),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Multi-confirm reset: Dialog 1 → Dialog 2 (type RESET).
+  void _showResetConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KodairTheme.darkBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Reset All Sidebar Apps?', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: const Text(
+          'This will remove all custom apps and restore factory defaults. Are you sure?',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showFinalResetConfirmation(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)),
+            child: const Text('Yes, Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFinalResetConfirmation(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KodairTheme.darkBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Final Confirmation', style: TextStyle(color: Colors.redAccent, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Type RESET below to confirm.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'RESET',
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: const Color(0xFF1A1A2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim() == 'RESET') {
+                context.read<SidebarProvider>().resetToDefaults();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Sidebar reset to factory defaults.'),
+                    backgroundColor: Color(0xFFD32F2F),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)),
+            child: const Text('Reset Everything'),
           ),
         ],
       ),

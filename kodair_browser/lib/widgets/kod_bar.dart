@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../providers/browser_provider.dart';
 import '../providers/sidebar_provider.dart';
+import '../providers/edition_provider.dart';
 import '../models/kodair_app.dart';
 import '../theme/kodair_theme.dart';
 
@@ -14,13 +15,20 @@ class KodBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final browser = context.watch<BrowserProvider>();
+    final editionConfig = context.watch<EditionProvider>().config;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
       width: 95,
       height: double.infinity,
       clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
-        gradient: KodairTheme.sidebarGradient,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [editionConfig.sidebarTop, editionConfig.sidebarBottom],
+        ),
       ),
       child: Column(
         children: [
