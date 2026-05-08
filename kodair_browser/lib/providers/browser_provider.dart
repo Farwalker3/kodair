@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-enum PanelType { info, settings, accounts }
+enum PanelType { info, settings, accounts, aiAgent }
 
 class TabState extends ChangeNotifier {
   String currentAppUrl;
@@ -143,6 +143,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isInfoPanelOpen = false;
   bool _isSettingsPanelOpen = false;
   bool _isAccountsPanelOpen = false;
+  bool _isAiAgentPanelOpen = false;
   bool _isSearchOpen = false;
   bool _isTrailsOpen = false;
   bool _isTorEnabled = false;
@@ -159,6 +160,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isInfoPanelOpen => _isInfoPanelOpen;
   bool get isSettingsPanelOpen => _isSettingsPanelOpen;
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
+  bool get isAiAgentPanelOpen => _isAiAgentPanelOpen;
   bool get isSearchOpen => _isSearchOpen;
   bool get isTrailsOpen => _isTrailsOpen;
   bool get isTorEnabled => _isTorEnabled;
@@ -252,16 +254,25 @@ class BrowserProvider extends ChangeNotifier {
         _isInfoPanelOpen = !_isInfoPanelOpen;
         _isSettingsPanelOpen = false;
         _isAccountsPanelOpen = false;
+        _isAiAgentPanelOpen = false;
         break;
       case PanelType.settings:
         _isSettingsPanelOpen = !_isSettingsPanelOpen;
         _isInfoPanelOpen = false;
         _isAccountsPanelOpen = false;
+        _isAiAgentPanelOpen = false;
         break;
       case PanelType.accounts:
         _isAccountsPanelOpen = !_isAccountsPanelOpen;
         _isInfoPanelOpen = false;
         _isSettingsPanelOpen = false;
+        _isAiAgentPanelOpen = false;
+        break;
+      case PanelType.aiAgent:
+        _isAiAgentPanelOpen = !_isAiAgentPanelOpen;
+        _isInfoPanelOpen = false;
+        _isSettingsPanelOpen = false;
+        _isAccountsPanelOpen = false;
         break;
     }
     notifyListeners();
@@ -306,6 +317,7 @@ class BrowserProvider extends ChangeNotifier {
     _isInfoPanelOpen = false;
     _isSettingsPanelOpen = false;
     _isAccountsPanelOpen = false;
+    _isAiAgentPanelOpen = false;
     _isSearchOpen = false;
   }
 }

@@ -89,6 +89,8 @@ class KodBar extends StatelessWidget {
     allButtons.add(_addAppBtn(context, sidebar));
     
     // Add utility buttons at the end
+    allButtons.add(_utilBtn(Icons.smart_toy, 'AI Agent',
+        () => browser.togglePanel(PanelType.aiAgent)));
     allButtons.add(_utilBtn(Icons.route, 'Trails',
         () => browser.toggleTrails()));
     allButtons.add(_utilBtn(Icons.account_circle, 'Account',

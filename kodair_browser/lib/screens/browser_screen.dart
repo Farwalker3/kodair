@@ -15,6 +15,7 @@ import '../widgets/accounts_panel.dart';
 import '../widgets/trails_manager.dart';
 import '../widgets/search_overlay.dart';
 import '../widgets/mobile_bottom_bar.dart';
+import '../widgets/ai_agent_panel.dart';
 
 class BrowserScreen extends StatelessWidget {
   const BrowserScreen({super.key});
@@ -167,6 +168,28 @@ class BrowserScreen extends StatelessWidget {
                     bottom: 0,
                     width: panelWidth,
                     child: const AccountsPanel(),
+                  ),
+          if (browser.isAiAgentPanelOpen)
+            isMobile
+                ? Positioned.fill(
+                    child: Container(
+                      color: const Color(0xF0101020),
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            const AiAgentPanel(),
+                            Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => browser.togglePanel(PanelType.aiAgent))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Positioned(
+                    left: sidebarWidth,
+                    top: kIsWeb || (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) ? 0 : 32,
+                    bottom: 0,
+                    width: panelWidth,
+                    child: const AiAgentPanel(),
                   ),
           if (browser.isTrailsOpen)
             isMobile
