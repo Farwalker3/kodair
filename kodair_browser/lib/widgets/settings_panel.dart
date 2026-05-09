@@ -164,8 +164,8 @@ class SettingsPanel extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   browser.isTorEnabled
-                      ? 'Tor is ACTIVE — traffic is routed through the Tor network'
-                      : 'Enable Tor to route traffic through the Tor network for private browsing',
+                      ? 'Tor is ACTIVE — access .onion sites directly.'
+                      : 'Enable Tor to route traffic through the Tor network.',
                   style: const TextStyle(fontSize: 11, color: Colors.black87),
                   textAlign: TextAlign.center,
                 ),
@@ -180,6 +180,34 @@ class SettingsPanel extends StatelessWidget {
                   activeTrackColor: KodairTheme.torPurple,
                   onChanged: (_) => browser.toggleTor(),
                   dense: true,
+                ),
+                if (browser.torRequiresRestart)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFFF9800)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Color(0xFFFF9800), size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Restart Kodair for Tor to take effect.',
+                            style: TextStyle(fontSize: 11, color: Color(0xFFE65100), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Requires Tor Browser running in the background.\nDownload from torproject.org',
+                  style: TextStyle(fontSize: 10, color: Colors.black54),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

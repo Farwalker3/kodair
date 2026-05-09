@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Represents a single action the AI agent wants to perform.
 class AgentAction {
   final String type; // click, type, navigate, scroll, extract, done, error
-  final String selector; // CSS selector for click/type
+  final String selector; // CSS selector or text match
   final String value; // text to type, URL to navigate, etc.
   final String reasoning; // why the agent chose this action
 
@@ -18,55 +17,22 @@ class AgentAction {
     this.reasoning = '',
   });
 
-  factory AgentAction.fromJson(Map<String, dynamic> json) {
-    return AgentAction(
-      type: json['action'] as String? ?? 'error',
-      selector: json['selector'] as String? ?? '',
-      value: json['value'] as String? ?? '',
-      reasoning: json['reasoning'] as String? ?? '',
-    );
-  }
-
   @override
   String toString() => '[$type] ${selector.isNotEmpty ? "$selector " : ""}${value.isNotEmpty ? "→ $value " : ""}($reasoning)';
 }
 
-/// The AI Browser Agent service — handles DOM extraction, LLM calls, and action execution.
+/// Parsed user intent from natural language.
+class _ParsedIntent {
+  final String action; // click, type, navigate, scroll, find, read, submit
+  final String target; // what to click/find/type into
+  final String value;  // what to type / URL to go to
+
+  _ParsedIntent(this.action, this.target, this.value);
+}
+
+/// The AI Browser Agent — works WITHOUT any API key.
+/// Uses smart keyword matching + DOM analysis to understand and execute commands.
 class AiAgentService {
-  static const _apiKeyPref = 'gemini_api_key';
-
-  GenerativeModel? _model;
-  String _apiKey = '';
-
-  /// Load API key from storage.
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _apiKey = prefs.getString(_apiKeyPref) ?? '';
-    if (_apiKey.isNotEmpty) {
-      _initModel();
-    }
-  }
-
-  void _initModel() {
-    _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
-      apiKey: _apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.2,
-        maxOutputTokens: 1024,
-      ),
-    );
-  }
-
-  bool get hasApiKey => _apiKey.isNotEmpty;
-
-  Future<void> setApiKey(String key) async {
-    _apiKey = key.trim();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_apiKeyPref, _apiKey);
-    if (_apiKey.isNotEmpty) _initModel();
-  }
-
   /// Extract a simplified DOM representation from the current page.
   static Future<String> extractPageContext(InAppWebViewController controller) async {
     try {
@@ -75,173 +41,368 @@ class AiAgentService {
           var out = [];
           out.push("URL: " + location.href);
           out.push("Title: " + document.title);
-          out.push("");
 
           // Collect interactive elements
           var items = document.querySelectorAll('a, button, input, textarea, select, [role="button"], [onclick]');
           var interactives = [];
-          for (var i = 0; i < Math.min(items.length, 60); i++) {
+          for (var i = 0; i < Math.min(items.length, 80); i++) {
             var el = items[i];
             var rect = el.getBoundingClientRect();
             if (rect.width === 0 || rect.height === 0) continue;
 
             var tag = el.tagName.toLowerCase();
-            var text = (el.innerText || el.value || el.placeholder || el.title || el.alt || '').trim().substring(0, 80);
-            var id = el.id ? '#' + el.id : '';
-            var cls = el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').filter(Boolean).slice(0,2).join('.') : '';
-            var href = el.href ? ' href=' + el.href.substring(0, 100) : '';
-            var type = el.type ? ' type=' + el.type : '';
+            var text = (el.innerText || el.value || el.placeholder || el.title || el.alt || el.ariaLabel || '').trim().substring(0, 80);
+            var id = el.id || '';
+            var name = el.name || '';
+            var type = el.type || '';
+            var href = el.href || '';
+            var cls = el.className && typeof el.className === 'string' ? el.className : '';
 
-            // Build a usable CSS selector
-            var selector = tag;
-            if (el.id) selector = '#' + el.id;
-            else if (el.name) selector = tag + '[name="' + el.name + '"]';
-            else if (text.length > 0 && text.length < 30) selector = tag + ':has-text("' + text.substring(0, 25) + '")';
-            else selector = tag + id + cls;
-
-            interactives.push('[' + i + '] ' + tag + id + cls + type + href + ' "' + text + '" → ' + selector);
+            interactives.push(JSON.stringify({
+              idx: i,
+              tag: tag,
+              text: text,
+              id: id,
+              name: name,
+              type: type,
+              href: href.substring(0, 200),
+              cls: cls.substring(0, 100)
+            }));
           }
 
-          out.push("INTERACTIVE ELEMENTS (" + interactives.length + "):");
-          out.push(interactives.join("\\n"));
-          out.push("");
+          out.push("ELEMENTS:" + interactives.join("|||"));
 
           // Visible text excerpt
-          var bodyText = (document.body.innerText || '').substring(0, 2000);
-          out.push("VISIBLE TEXT (excerpt):");
-          out.push(bodyText);
+          var bodyText = (document.body.innerText || '').substring(0, 3000);
+          out.push("TEXT:" + bodyText);
 
-          return out.join("\\n");
+          return out.join("\\n---\\n");
         })();
       ''');
-      return result?.toString() ?? 'Could not extract page context.';
+      return result?.toString() ?? '';
     } catch (e) {
-      return 'Error extracting page: $e';
+      return 'Error: $e';
     }
   }
 
-  /// Ask the LLM to decide the next action.
-  Future<AgentAction> decideNextAction(String userGoal, String pageContext, List<AgentAction> previousActions) async {
-    if (_model == null) {
-      return const AgentAction(type: 'error', reasoning: 'No API key configured. Go to Settings to add your free Gemini API key.');
-    }
+  /// Parse a page context string into structured data.
+  static Map<String, dynamic> _parsePage(String rawContext) {
+    final parts = rawContext.split('\n---\n');
+    String url = '', title = '';
+    List<Map<String, dynamic>> elements = [];
+    String bodyText = '';
 
-    final historyStr = previousActions.isEmpty
-        ? 'None yet.'
-        : previousActions.map((a) => '  - ${a.toString()}').join('\n');
-
-    final prompt = '''You are a browser automation agent. The user wants you to perform a task on a web page.
-
-USER GOAL: $userGoal
-
-CURRENT PAGE CONTEXT:
-$pageContext
-
-PREVIOUS ACTIONS TAKEN:
-$historyStr
-
-Decide the NEXT single action to take. Respond with ONLY valid JSON (no markdown, no explanation):
-{
-  "action": "click" | "type" | "navigate" | "scroll" | "wait" | "done",
-  "selector": "CSS selector of the element (for click/type actions)",
-  "value": "text to type (for type action) or URL (for navigate) or direction (for scroll: up/down)",
-  "reasoning": "brief explanation of why you chose this action"
-}
-
-Rules:
-- If the task is complete, use action "done" with a summary in reasoning.
-- If you need to click something, use the CSS selector from the interactive elements list.
-- If you need to navigate to a URL, use action "navigate" with the full URL.
-- Only take ONE action at a time.
-- Never perform dangerous actions (delete accounts, make purchases, submit sensitive forms).
-- If you're stuck or the page doesn't have what's needed, use "done" with an explanation.
-''';
-
-    try {
-      final response = await _model!.generateContent([Content.text(prompt)]);
-      final text = response.text ?? '';
-
-      // Extract JSON from response
-      final jsonMatch = RegExp(r'\{[^{}]*\}').firstMatch(text);
-      if (jsonMatch == null) {
-        return AgentAction(type: 'error', reasoning: 'LLM returned invalid response: ${text.substring(0, 100)}');
+    for (final part in parts) {
+      if (part.startsWith('URL: ')) url = part.substring(5);
+      if (part.startsWith('Title: ')) title = part.substring(7);
+      if (part.startsWith('ELEMENTS:')) {
+        final jsonStrs = part.substring(9).split('|||');
+        for (final js in jsonStrs) {
+          try { elements.add(jsonDecode(js)); } catch (_) {}
+        }
       }
+      if (part.startsWith('TEXT:')) bodyText = part.substring(5);
+    }
 
-      final data = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
-      return AgentAction.fromJson(data);
-    } catch (e) {
-      return AgentAction(type: 'error', reasoning: 'LLM error: $e');
+    return {'url': url, 'title': title, 'elements': elements, 'text': bodyText};
+  }
+
+  /// Parse natural language prompt into a structured intent.
+  static _ParsedIntent parseIntent(String prompt) {
+    final p = prompt.toLowerCase().trim();
+
+    // Navigate patterns
+    final navPatterns = [
+      RegExp(r'(?:go to|navigate to|open|visit|load)\s+(.+)', caseSensitive: false),
+      RegExp(r'(?:take me to)\s+(.+)', caseSensitive: false),
+    ];
+    for (final pat in navPatterns) {
+      final m = pat.firstMatch(p);
+      if (m != null) {
+        var target = m.group(1)!.trim();
+        if (!target.startsWith('http')) target = 'https://$target';
+        return _ParsedIntent('navigate', '', target);
+      }
+    }
+
+    // Search patterns
+    final searchPatterns = [
+      RegExp(r'search (?:for |)(.+)', caseSensitive: false),
+      RegExp(r'look up (.+)', caseSensitive: false),
+      RegExp(r'google (.+)', caseSensitive: false),
+      RegExp(r'find (.+)', caseSensitive: false),
+    ];
+    for (final pat in searchPatterns) {
+      final m = pat.firstMatch(p);
+      if (m != null) return _ParsedIntent('search', '', m.group(1)!.trim());
+    }
+
+    // Type patterns
+    final typePatterns = [
+      RegExp(r"""type ["'](.+?)["'] (?:in|into|on) (.+)""", caseSensitive: false),
+      RegExp(r'type (.+?) (?:in|into|on) (.+)', caseSensitive: false),
+      RegExp(r"""enter ["'](.+?)["'] (?:in|into|on) (.+)""", caseSensitive: false),
+      RegExp(r"""fill (?:in |)(.+?) with ["']?(.+?)["']?$""", caseSensitive: false),
+    ];
+    for (final pat in typePatterns) {
+      final m = pat.firstMatch(p);
+      if (m != null) return _ParsedIntent('type', m.group(2)!.trim(), m.group(1)!.trim());
+    }
+
+    // Click patterns
+    final clickPatterns = [
+      RegExp(r'click (?:on |the |)(.+)', caseSensitive: false),
+      RegExp(r'press (?:the |)(.+)', caseSensitive: false),
+      RegExp(r'tap (?:on |the |)(.+)', caseSensitive: false),
+      RegExp(r'hit (?:the |)(.+)', caseSensitive: false),
+      RegExp(r'select (?:the |)(.+)', caseSensitive: false),
+    ];
+    for (final pat in clickPatterns) {
+      final m = pat.firstMatch(p);
+      if (m != null) return _ParsedIntent('click', m.group(1)!.trim(), '');
+    }
+
+    // Scroll patterns
+    if (p.contains('scroll down') || p.contains('page down')) return _ParsedIntent('scroll', '', 'down');
+    if (p.contains('scroll up') || p.contains('page up')) return _ParsedIntent('scroll', '', 'up');
+    if (p.contains('scroll') || p.contains('bottom')) return _ParsedIntent('scroll', '', 'down');
+    if (p.contains('top')) return _ParsedIntent('scroll', '', 'up');
+
+    // Go back / forward
+    if (p.contains('go back') || p.contains('back')) return _ParsedIntent('back', '', '');
+    if (p.contains('go forward') || p.contains('forward')) return _ParsedIntent('forward', '', '');
+
+    // Read / extract
+    if (p.contains('read') || p.contains('what does') || p.contains('extract') || p.contains('get text')) {
+      return _ParsedIntent('read', '', '');
+    }
+
+    // Submit
+    if (p.contains('submit') || p.contains('enter') || p.contains('send')) {
+      return _ParsedIntent('submit', '', '');
+    }
+
+    // Default: try to click whatever they said
+    return _ParsedIntent('click', p, '');
+  }
+
+  /// Fuzzy-match an element target against the DOM elements.
+  static int? _findElement(List<Map<String, dynamic>> elements, String target) {
+    final t = target.toLowerCase().trim().replaceAll(RegExp(r"""["']"""), '');
+    if (t.isEmpty) return null;
+
+    // Exact text match
+    for (int i = 0; i < elements.length; i++) {
+      final el = elements[i];
+      final text = (el['text'] as String? ?? '').toLowerCase();
+      if (text == t) return el['idx'] as int;
+    }
+
+    // Contains match
+    for (int i = 0; i < elements.length; i++) {
+      final el = elements[i];
+      final text = (el['text'] as String? ?? '').toLowerCase();
+      if (text.contains(t) || t.contains(text)) return el['idx'] as int;
+    }
+
+    // ID or name match
+    for (int i = 0; i < elements.length; i++) {
+      final el = elements[i];
+      final id = (el['id'] as String? ?? '').toLowerCase();
+      final name = (el['name'] as String? ?? '').toLowerCase();
+      if (id.contains(t) || name.contains(t) || t.contains(id) || t.contains(name)) {
+        return el['idx'] as int;
+      }
+    }
+
+    // Placeholder / class match
+    for (int i = 0; i < elements.length; i++) {
+      final el = elements[i];
+      final cls = (el['cls'] as String? ?? '').toLowerCase();
+      if (cls.contains(t)) return el['idx'] as int;
+    }
+
+    // Type-based match (e.g., "search box" → input[type=search] or input[type=text])
+    if (t.contains('search') || t.contains('query')) {
+      for (int i = 0; i < elements.length; i++) {
+        final el = elements[i];
+        final tag = el['tag'] as String? ?? '';
+        final type = (el['type'] as String? ?? '').toLowerCase();
+        final name = (el['name'] as String? ?? '').toLowerCase();
+        if (tag == 'input' && (type == 'search' || type == 'text' || name.contains('search') || name.contains('q'))) {
+          return el['idx'] as int;
+        }
+      }
+    }
+
+    // Button-like match
+    if (t.contains('button') || t.contains('submit') || t.contains('login') || t.contains('sign')) {
+      for (int i = 0; i < elements.length; i++) {
+        final el = elements[i];
+        final tag = el['tag'] as String? ?? '';
+        final type = (el['type'] as String? ?? '').toLowerCase();
+        if (tag == 'button' || type == 'submit') return el['idx'] as int;
+      }
+    }
+
+    return null;
+  }
+
+  /// Decide the next action based on parsed intent + page context.
+  static AgentAction decideAction(String userGoal, String pageContext, List<AgentAction> history) {
+    final intent = parseIntent(userGoal);
+    final page = _parsePage(pageContext);
+    final elements = page['elements'] as List<Map<String, dynamic>>;
+
+    switch (intent.action) {
+      case 'navigate':
+        return AgentAction(type: 'navigate', value: intent.value, reasoning: 'Going to ${intent.value}');
+
+      case 'search':
+        // Find the search input
+        final searchIdx = _findElement(elements, 'search');
+        if (searchIdx != null) {
+          if (history.isEmpty) {
+            return AgentAction(type: 'type', selector: '$searchIdx', value: intent.value, reasoning: 'Typing "${intent.value}" in search box');
+          } else if (history.length == 1) {
+            return AgentAction(type: 'submit', selector: '$searchIdx', value: '', reasoning: 'Submitting search');
+          } else {
+            return AgentAction(type: 'done', reasoning: 'Search submitted for "${intent.value}"');
+          }
+        }
+        // Fallback: navigate to google search
+        return AgentAction(
+          type: 'navigate',
+          value: 'https://www.google.com/search?q=${Uri.encodeComponent(intent.value)}',
+          reasoning: 'No search box found, using Google',
+        );
+
+      case 'click':
+        final idx = _findElement(elements, intent.target);
+        if (idx != null) {
+          return AgentAction(type: 'click', selector: '$idx', reasoning: 'Clicking element matching "${intent.target}"');
+        }
+        return AgentAction(type: 'error', reasoning: 'Could not find element matching "${intent.target}" on this page');
+
+      case 'type':
+        final idx = _findElement(elements, intent.target);
+        if (idx != null) {
+          return AgentAction(type: 'type', selector: '$idx', value: intent.value, reasoning: 'Typing "${intent.value}" into "${intent.target}"');
+        }
+        return AgentAction(type: 'error', reasoning: 'Could not find input matching "${intent.target}"');
+
+      case 'scroll':
+        return AgentAction(type: 'scroll', value: intent.value, reasoning: 'Scrolling ${intent.value}');
+
+      case 'back':
+        return AgentAction(type: 'back', reasoning: 'Going back');
+
+      case 'forward':
+        return AgentAction(type: 'forward', reasoning: 'Going forward');
+
+      case 'read':
+        final text = (page['text'] as String? ?? '').substring(0, 500);
+        return AgentAction(type: 'done', reasoning: 'Page content: $text');
+
+      case 'submit':
+        return AgentAction(type: 'submit', selector: '', reasoning: 'Submitting form');
+
+      default:
+        return AgentAction(type: 'error', reasoning: 'I don\'t understand that command. Try: "click X", "type X in Y", "go to URL", "search for X", "scroll down"');
     }
   }
 
-  /// Execute an action on the WebView.
+  /// Execute an action on the WebView by element index.
   static Future<String> executeAction(InAppWebViewController controller, AgentAction action) async {
     try {
       switch (action.type) {
         case 'click':
+          final idx = int.tryParse(action.selector);
           final result = await controller.evaluateJavascript(source: '''
             (function() {
-              // Try direct selector first
-              var el = document.querySelector('${_escapeJs(action.selector)}');
-              
-              // Fallback: try finding by text content
-              if (!el) {
-                var all = document.querySelectorAll('a, button, [role="button"]');
-                for (var i = 0; i < all.length; i++) {
-                  if (all[i].innerText && all[i].innerText.trim().includes('${_escapeJs(action.value)}')) {
-                    el = all[i];
-                    break;
-                  }
-                }
+              var items = document.querySelectorAll('a, button, input, textarea, select, [role="button"], [onclick]');
+              var visible = [];
+              for (var i = 0; i < items.length; i++) {
+                var rect = items[i].getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) visible.push(items[i]);
               }
-              
+              var el = visible[${idx ?? 0}];
               if (el) {
                 el.scrollIntoView({behavior: 'smooth', block: 'center'});
-                el.click();
-                return 'Clicked: ' + (el.innerText || el.tagName).substring(0, 50);
+                setTimeout(function() { el.click(); }, 300);
+                return 'Clicked: ' + (el.innerText || el.tagName).substring(0, 60);
               }
-              return 'Element not found: ${_escapeJs(action.selector)}';
+              return 'Element not found at index ${idx ?? 0}';
             })();
           ''');
           return result?.toString() ?? 'Click executed';
 
         case 'type':
+          final idx = int.tryParse(action.selector);
           final result = await controller.evaluateJavascript(source: '''
             (function() {
-              var el = document.querySelector('${_escapeJs(action.selector)}');
+              var items = document.querySelectorAll('a, button, input, textarea, select, [role="button"], [onclick]');
+              var visible = [];
+              for (var i = 0; i < items.length; i++) {
+                var rect = items[i].getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) visible.push(items[i]);
+              }
+              var el = visible[${idx ?? 0}];
               if (el) {
                 el.focus();
                 el.value = '${_escapeJs(action.value)}';
                 el.dispatchEvent(new Event('input', {bubbles: true}));
                 el.dispatchEvent(new Event('change', {bubbles: true}));
-                return 'Typed into: ' + (el.name || el.id || el.tagName);
+                return 'Typed: "${_escapeJs(action.value)}" into ' + (el.name || el.id || el.tagName);
               }
-              return 'Input not found: ${_escapeJs(action.selector)}';
+              return 'Input not found at index ${idx ?? 0}';
             })();
           ''');
           return result?.toString() ?? 'Type executed';
+
+        case 'submit':
+          final result = await controller.evaluateJavascript(source: '''
+            (function() {
+              var form = document.querySelector('form');
+              if (form) { form.submit(); return 'Form submitted'; }
+              // Try pressing Enter on focused element
+              var focused = document.activeElement;
+              if (focused) {
+                focused.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', keyCode: 13, bubbles: true}));
+                focused.dispatchEvent(new KeyboardEvent('keypress', {key: 'Enter', keyCode: 13, bubbles: true}));
+                focused.dispatchEvent(new KeyboardEvent('keyup', {key: 'Enter', keyCode: 13, bubbles: true}));
+                return 'Enter key sent';
+              }
+              return 'No form or focused element found';
+            })();
+          ''');
+          return result?.toString() ?? 'Submit executed';
 
         case 'navigate':
           await controller.loadUrl(urlRequest: URLRequest(url: WebUri(action.value)));
           return 'Navigating to: ${action.value}';
 
         case 'scroll':
-          final direction = action.value.toLowerCase().contains('up') ? -500 : 500;
+          final direction = action.value.contains('up') ? -500 : 500;
           await controller.evaluateJavascript(source: 'window.scrollBy({top: $direction, behavior: "smooth"});');
           return 'Scrolled ${direction > 0 ? "down" : "up"}';
 
-        case 'wait':
-          await Future.delayed(const Duration(seconds: 2));
-          return 'Waited 2 seconds';
+        case 'back':
+          await controller.goBack();
+          return 'Went back';
+
+        case 'forward':
+          await controller.goForward();
+          return 'Went forward';
 
         case 'done':
-          return 'Task complete: ${action.reasoning}';
+          return action.reasoning;
 
         default:
           return 'Unknown action: ${action.type}';
       }
     } catch (e) {
-      return 'Execution error: $e';
+      return 'Error: $e';
     }
   }
 

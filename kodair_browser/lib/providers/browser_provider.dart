@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import '../services/tor_service.dart';
 
 enum PanelType { info, settings, accounts, aiAgent }
 
@@ -102,6 +103,7 @@ class BrowserProvider extends ChangeNotifier {
         }
       }
       _isSidebarCollapsed = prefs.getBool('isSidebarCollapsed') ?? false;
+      _isTorEnabled = prefs.getBool('tor_enabled') ?? false;
     } catch (e) {
       debugPrint('Error loading tabs: $e');
     }
@@ -149,6 +151,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isTorEnabled = false;
   bool _isAutoplayBlocked = true;
   bool _isSidebarCollapsed = false;
+  bool _torRequiresRestart = false;
 
   // Getters for active tab wrappers
   String get currentAppUrl => activeTab.currentAppUrl;
@@ -166,6 +169,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isTorEnabled => _isTorEnabled;
   bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
+  bool get torRequiresRestart => _torRequiresRestart;
 
   void toggleTrails() {
     _isTrailsOpen = !_isTrailsOpen;
@@ -284,9 +288,11 @@ class BrowserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggle Tor proxy
+  /// Toggle Tor proxy — requires app restart to take effect.
   void toggleTor() {
     _isTorEnabled = !_isTorEnabled;
+    _torRequiresRestart = true;
+    TorService.saveTorPreference(_isTorEnabled);
     notifyListeners();
   }
 

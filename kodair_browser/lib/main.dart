@@ -12,15 +12,27 @@ import 'theme/kodair_theme.dart';
 import 'screens/browser_screen.dart';
 import 'utils/native_env.dart';
 import 'services/update_service.dart';
+import 'services/tor_service.dart';
 import 'package:home_widget/home_widget.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Fix for flutter_inappwebview transparentBackground bug on Windows: 
   // Force WebView2's default background color to fully transparent via environment variable
   if (Platform.isWindows) {
     NativeEnv.set('WEBVIEW2_DEFAULT_BACKGROUND_COLOR', '0');
+
+    // If TOR mode was enabled, configure WebView2 proxy BEFORE any WebViews are created.
+    // WebView2 reads WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS only at process startup.
+    final torEnabled = await TorService.shouldEnableTor();
+    if (torEnabled) {
+      final tor = TorService.instance;
+      final connected = await tor.connect();
+      if (connected) {
+        NativeEnv.set('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', '--proxy-server=${tor.proxyAddress}');
+      }
+    }
   }
 
   runApp(const KodairBrowserApp());
