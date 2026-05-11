@@ -16,23 +16,21 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.10+10
+version: 1.0.11+11
 
 environment:
   sdk: ^3.10.4
 
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
+# Dependencies specify what packages that your application needs in order to work.
+# To automatically upgrade your packages to the latest versions available, run
+# `flutter pub upgrade --major-versions`. Alternatively, you can manually update
+# dependencies by changing the version numbers below to the latest version available on pub.dev. To see which dependencies have newer versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # To use the CupertinoIcons class in your application, add a dependency on cupertino_icons in your pubspec.yaml file.
   cupertino_icons: ^1.0.8
   flutter_inappwebview: ^6.1.5
   provider: ^6.1.5+1
