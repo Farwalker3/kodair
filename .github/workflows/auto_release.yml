@@ -27,6 +27,13 @@ jobs:
           flutter-version: '3.38.5'
           channel: 'stable'
 
+      - name: Decode Android Keystore
+        run: |
+          mkdir -p kodair_browser/android/app
+          printf '%s' "$KODAIR_KEYSTORE_BASE64" | base64 --decode > kodair_browser/android/app/kodair-release.keystore
+        env:
+          KODAIR_KEYSTORE_BASE64: ${{ secrets.KODAIR_KEYSTORE_BASE64 }}
+
       - name: Get Version
         id: get_version
         run: |
@@ -35,6 +42,11 @@ jobs:
 
       - name: Build Android APK
         working-directory: ./kodair_browser
+        env:
+          KODAIR_KEYSTORE_PATH: ${{ github.workspace }}/kodair_browser/android/app/kodair-release.keystore
+          KODAIR_KEYSTORE_PASSWORD: ${{ secrets.KODAIR_KEYSTORE_PASSWORD }}
+          KODAIR_KEY_PASSWORD: ${{ secrets.KODAIR_KEY_PASSWORD }}
+          KODAIR_KEY_ALIAS: ${{ secrets.KODAIR_KEY_ALIAS }}
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Binary
