@@ -163,6 +163,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isInfoPanelOpen => _isInfoPanelOpen;
   bool get isSettingsPanelOpen => _isSettingsPanelOpen;
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
+  bool get isAccountsOpen => isAccountsPanelOpen;
   bool get isAiAgentPanelOpen => _isAiAgentPanelOpen;
   bool get isSearchOpen => _isSearchOpen;
   bool get isTrailsOpen => _isTrailsOpen;
