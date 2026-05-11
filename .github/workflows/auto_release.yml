@@ -35,7 +35,7 @@ jobs:
 
       - name: Build Android APK
         working-directory: ./kodair_browser
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
@@ -65,7 +65,7 @@ jobs:
 
       - name: Build Desktop Executable
         working-directory: ./kodair_browser
-        run: flutter build windows --release
+        run: flutter build windows --release --no-tree-shake-icons
 
       - name: Compile Windows Installer (InnoSetup)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
