@@ -6,8 +6,8 @@ DefaultDirName={autopf}\Kodair
 ; It forces the installer to run without requiring Admin rights,
 ; and installs the app inside the user's Local AppData directory.
 PrivilegesRequired=lowest
-OutputDir=installer
-OutputBaseFilename=KodairBrowser-Setup
+OutputDir=Output
+OutputBaseFilename=KodairInstaller
 Compression=lzma2
 SolidCompression=yes
 SetupIconFile=kodair_browser\windows\runner\resources\app_icon.ico
