@@ -50,15 +50,14 @@ class KodBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
       color: KodairTheme.sizeBarBg,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _miniBtn(
             icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
             tooltip: browser.isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
             onTap: () => browser.toggleSidebar(),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _miniBtn(
             icon: Icons.account_circle,
             tooltip: 'Account',
@@ -140,9 +139,10 @@ class KodBar extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               first,
-              if (second != null) ...[const SizedBox(width: 4), second],
+              if (second != null) ...[const SizedBox(width: 9), second],
             ],
           ),
         ),
@@ -161,13 +161,13 @@ class KodBar extends StatelessWidget {
         onLongPress: () => _showAppContextMenu(context, Offset.zero, app, browser, sidebar),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          width: 40,
-          height: 40,
+          width: 39,
+          height: 39,
           decoration: BoxDecoration(
             color: isSelected
                 ? KodairTheme.appButtonHover.withAlpha(200)
                 : KodairTheme.appButtonBg,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(9),
             border: isSelected
                 ? Border.all(color: Colors.white.withAlpha(150), width: 1.5)
                 : null,
@@ -178,7 +178,7 @@ class KodBar extends StatelessWidget {
           child: Center(
             child: Icon(
               app.iconData ?? Icons.apps,
-              size: 20,
+              size: 19,
               color: isSelected ? Colors.white : KodairTheme.appButtonText,
             ),
           ),
@@ -254,7 +254,7 @@ class KodBar extends StatelessWidget {
                 labelStyle: const TextStyle(color: Colors.white54),
                 filled: true,
                 fillColor: const Color(0xFF1A1A2E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 12),
@@ -295,15 +295,15 @@ class KodBar extends StatelessWidget {
       child: GestureDetector(
         onTap: () => _showAddAppDialog(context, sidebar),
         child: Container(
-          width: 40,
-          height: 40,
+          width: 39,
+          height: 39,
           decoration: BoxDecoration(
             color: KodairTheme.appButtonBg.withAlpha(100),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.white.withAlpha(60), width: 1),
           ),
           child: const Center(
-            child: Icon(Icons.add, size: 20, color: Colors.white70),
+            child: Icon(Icons.add, size: 19, color: Colors.white70),
           ),
         ),
       ),
@@ -380,14 +380,14 @@ class KodBar extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 28,
-          height: 28,
+          width: 27,
+          height: 27,
           decoration: BoxDecoration(
             color: KodairTheme.appButtonBg,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
-            child: Icon(icon, size: 15, color: KodairTheme.appButtonText),
+            child: Icon(icon, size: 14, color: KodairTheme.appButtonText),
           ),
         ),
       ),
