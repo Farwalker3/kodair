@@ -233,6 +233,13 @@ class BrowserScreen extends StatelessWidget {
       color: KodairTheme.sizeBarBg,
       child: Row(
         children: [
+          _TitleBarBtn(
+            icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
+            hoverColor: KodairTheme.primaryBlue,
+            onTap: () => browser.toggleSidebar(),
+            tooltip: browser.isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
+          ),
+
           // --- LEFT: Navigation controls ---
           _TitleBarBtn(icon: Icons.close, hoverColor: KodairTheme.closeRed, onTap: () => browser.goHome(), tooltip: 'Home'),
           _TitleBarBtn(icon: Icons.refresh, hoverColor: KodairTheme.refreshYellow, onTap: () => browser.navigateToApp(browser.currentAppUrl), tooltip: 'Refresh'),

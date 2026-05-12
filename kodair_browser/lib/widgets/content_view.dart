@@ -104,6 +104,9 @@ const String _aliasVaultBridgeJS = '''
 })();
 ''';
 
+const String _defaultDesktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0';
+
 /// Content viewer using InAppWebView with scroll fix and pointer lock
 /// workaround for Windows.
 class ContentView extends StatefulWidget {
@@ -124,6 +127,39 @@ class _ContentViewState extends State<ContentView> {
   WebViewEnvironment? _webViewEnvironment;
   bool _isEnvLoading = true;
   bool _currentTorState = false;
+
+  String _userAgentForUrl(String? url) {
+    if (_isMicrosoftAuthUrl(url)) {
+      return _microsoftAuthUserAgent;
+    }
+    return _defaultDesktopUserAgent;
+  }
+
+  bool _isMicrosoftAuthUrl(String? url) {
+    if (url == null) return false;
+    final lower = url.toLowerCase();
+    return lower.contains('login.microsoftonline.com') ||
+        lower.contains('login.live.com') ||
+        lower.contains('account.live.com') ||
+        lower.contains('microsoft.com/microsoft-365');
+  }
+
+  InAppWebViewSettings _settingsForUrl(String? url, {required bool mediaPlaybackRequiresUserGesture}) {
+    return InAppWebViewSettings(
+      javaScriptEnabled: true,
+      userAgent: _userAgentForUrl(url),
+      domStorageEnabled: true,
+      allowsInlineMediaPlayback: true,
+      allowsBackForwardNavigationGestures: true,
+      transparentBackground: true,
+      supportZoom: true,
+      useWideViewPort: true,
+      verticalScrollBarEnabled: true,
+      horizontalScrollBarEnabled: true,
+      mediaPlaybackRequiresUserGesture: mediaPlaybackRequiresUserGesture,
+      useShouldOverrideUrlLoading: true,
+    );
+  }
 
   @override
   void initState() {
@@ -265,18 +301,9 @@ class _ContentViewState extends State<ContentView> {
                       initialUrlRequest: URLRequest(
                         url: WebUri(widget.tabState.currentAppUrl),
                       ),
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                  domStorageEnabled: true,
-                  allowsInlineMediaPlayback: true,
+                initialSettings: _settingsForUrl(
+                  widget.tabState.currentAppUrl,
                   mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
-                  allowsBackForwardNavigationGestures: true,
-                  transparentBackground: true,
-                  supportZoom: true,
-                  useWideViewPort: true,
-                  verticalScrollBarEnabled: true,
-                  horizontalScrollBarEnabled: true,
                 ),
                 // Inject pointer lock hook BEFORE any page scripts run
                 initialUserScripts: UnmodifiableListView([
@@ -295,6 +322,23 @@ class _ContentViewState extends State<ContentView> {
                       injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     ),
                 ]),
+                onShouldOverrideUrlLoading: (controller, navigationAction) async {
+                  final requestUrl = navigationAction.request.url?.toString();
+                  final requestMethod = navigationAction.request.method?.toUpperCase();
+                  if (_isMicrosoftAuthUrl(requestUrl)) {
+                    final browser = context.read<BrowserProvider>();
+                    await controller.setSettings(
+                      settings: _settingsForUrl(
+                        requestUrl,
+                        mediaPlaybackRequiresUserGesture: browser.isAutoplayBlocked,
+                      ),
+                    );
+                  }
+                  if (requestMethod == 'POST') {
+                    return NavigationActionPolicy.ALLOW;
+                  }
+                  return NavigationActionPolicy.ALLOW;
+                },
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
                   widget.tabState.webViewController = controller;
@@ -312,46 +356,36 @@ class _ContentViewState extends State<ContentView> {
                 },
                 onLoadStart: (controller, url) async {
                   if (mounted) setState(() => _isLoading = true);
-                  
+
                   if (url != null) {
-                    bool shouldBlock = context.read<BrowserProvider>().isAutoplayBlocked;
-                    if (url.toString().contains('youtube.com/shorts')) {
+                    final urlStr = url.toString();
+                    var shouldBlock = context.read<BrowserProvider>().isAutoplayBlocked;
+                    if (urlStr.contains('youtube.com/shorts')) {
                       shouldBlock = false;
                     }
-                    await controller.setSettings(settings: InAppWebViewSettings(
-                      javaScriptEnabled: true,
-                      domStorageEnabled: true,
-                      allowsInlineMediaPlayback: true,
-                      allowsBackForwardNavigationGestures: true,
-                      transparentBackground: true,
-                      supportZoom: true,
-                      useWideViewPort: true,
-                      verticalScrollBarEnabled: true,
-                      horizontalScrollBarEnabled: true,
-                      mediaPlaybackRequiresUserGesture: shouldBlock,
-                    ));
+                    await controller.setSettings(
+                      settings: _settingsForUrl(
+                        urlStr,
+                        mediaPlaybackRequiresUserGesture: shouldBlock,
+                      ),
+                    );
                   }
                 },
                 onUpdateVisitedHistory: (controller, url, isReload) async {
                   if (mounted && url != null) {
                     final browser = context.read<BrowserProvider>();
-                    browser.activeTab.updateHistory(url.toString(), '');
-                    bool shouldBlock = browser.isAutoplayBlocked;
-                    if (url.toString().contains('youtube.com/shorts')) {
+                    final urlStr = url.toString();
+                    browser.activeTab.updateHistory(urlStr, '');
+                    var shouldBlock = browser.isAutoplayBlocked;
+                    if (urlStr.contains('youtube.com/shorts')) {
                       shouldBlock = false;
                     }
-                    await controller.setSettings(settings: InAppWebViewSettings(
-                      javaScriptEnabled: true,
-                      domStorageEnabled: true,
-                      allowsInlineMediaPlayback: true,
-                      allowsBackForwardNavigationGestures: true,
-                      transparentBackground: true,
-                      supportZoom: true,
-                      useWideViewPort: true,
-                      verticalScrollBarEnabled: true,
-                      horizontalScrollBarEnabled: true,
-                      mediaPlaybackRequiresUserGesture: shouldBlock,
-                    ));
+                    await controller.setSettings(
+                      settings: _settingsForUrl(
+                        urlStr,
+                        mediaPlaybackRequiresUserGesture: shouldBlock,
+                      ),
+                    );
                   }
                 },
                 onLoadStop: (controller, url) async {
