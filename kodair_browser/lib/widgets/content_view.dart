@@ -322,7 +322,7 @@ class _ContentViewState extends State<ContentView> {
                       injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     ),
                 ]),
-                onShouldOverrideUrlLoading: (controller, navigationAction) async {
+                shouldOverrideUrlLoading: (controller, navigationAction) async {
                   final requestUrl = navigationAction.request.url?.toString();
                   final requestMethod = navigationAction.request.method?.toUpperCase();
                   if (_isMicrosoftAuthUrl(requestUrl)) {
