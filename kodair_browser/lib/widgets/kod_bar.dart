@@ -142,7 +142,7 @@ class KodBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               first,
-              if (second != null) ...[const SizedBox(width: 9), second],
+              if (second != null) ...[const SizedBox(width: 5), second],
             ],
           ),
         ),
