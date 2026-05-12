@@ -47,10 +47,11 @@ class KodBar extends StatelessWidget {
   Widget _buildTopControlsRow(BuildContext context, BrowserProvider browser) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
       color: KodairTheme.sizeBarBg,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _miniBtn(
             icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
