@@ -71,7 +71,7 @@ class DownloadService {
     final raw = (suggestedFilename != null && suggestedFilename.trim().isNotEmpty)
         ? suggestedFilename.trim()
         : fallback;
-    final sanitized = raw.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
+    final sanitized = raw.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_').trim();
     return sanitized.isEmpty ? 'download' : sanitized;
   }
 

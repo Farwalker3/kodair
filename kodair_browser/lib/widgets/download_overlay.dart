@@ -37,11 +37,7 @@ class DownloadOverlay extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withAlpha(18)),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(80),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
+                  BoxShadow(color: Colors.black.withAlpha(80), blurRadius: 24, offset: const Offset(0, 12)),
                 ],
               ),
               child: Column(
@@ -80,67 +76,28 @@ class DownloadOverlay extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              statusText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            Text(statusText, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
-                            Text(
-                              downloads.fileName.isEmpty ? downloads.sourceUrl : downloads.fileName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
+                            Text(downloads.fileName.isEmpty ? downloads.sourceUrl : downloads.fileName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                           ],
                         ),
                       ),
-                      IconButton(
-                        onPressed: downloads.dismiss,
-                        icon: const Icon(Icons.close, color: Colors.white70, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                        splashRadius: 18,
-                        tooltip: 'Dismiss',
-                      ),
+                      IconButton(onPressed: downloads.dismiss, icon: const Icon(Icons.close, color: Colors.white70, size: 18), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 28, minHeight: 28), splashRadius: 18, tooltip: 'Dismiss'),
                     ],
                   ),
                   const SizedBox(height: 10),
                   if (!isFailed)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(99),
-                      child: LinearProgressIndicator(
-                        minHeight: 6,
-                        value: progressValue,
-                        backgroundColor: Colors.white.withAlpha(30),
-                        color: isCompleted ? Colors.greenAccent : KodairTheme.primaryBlue,
-                      ),
+                      child: LinearProgressIndicator(minHeight: 6, value: progressValue, backgroundColor: Colors.white.withAlpha(30), color: isCompleted ? Colors.greenAccent : KodairTheme.primaryBlue),
                     ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isFailed
-                            ? (downloads.errorMessage ?? 'Unknown error')
-                            : isCompleted
-                                ? 'Saved locally'
-                                : downloads.hasProgress
-                                    ? _formatProgress(downloads.downloadedBytes, downloads.totalBytes!)
-                                    : 'Preparing download',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
+                      Text(isFailed ? (downloads.errorMessage ?? 'Unknown error') : isCompleted ? 'Saved locally' : downloads.hasProgress ? _formatProgress(downloads.downloadedBytes, downloads.totalBytes!) : 'Preparing download', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                       if (progressValue != null)
-                        Text(
-                          '${(progressValue * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(color: Colors.white60, fontSize: 11),
-                        ),
+                        Text('${(progressValue * 100).clamp(0, 100).toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     ],
                   ),
                 ],
@@ -152,9 +109,7 @@ class DownloadOverlay extends StatelessWidget {
     );
   }
 
-  static String _formatProgress(int downloadedBytes, int totalBytes) {
-    return '${_formatBytes(downloadedBytes)} / ${_formatBytes(totalBytes)}';
-  }
+  static String _formatProgress(int downloadedBytes, int totalBytes) => '${_formatBytes(downloadedBytes)} / ${_formatBytes(totalBytes)}';
 
   static String _formatBytes(int bytes) {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];

@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -67,7 +67,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -110,7 +110,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -132,7 +132,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: Kodair Browser v${{ env.VERSION }}
-          body: "Automated Native Release Pipeline triggered by version increment. \n\nIncludes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
+          body: "Automated Native Release Pipeline triggered by version increment. \\n\\nIncludes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
           files: |
             release-binaries/app-release.apk
             release-binaries/KodairInstaller.exe
