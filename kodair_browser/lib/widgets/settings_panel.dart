@@ -32,6 +32,7 @@ class SettingsPanel extends StatelessWidget {
             'Adjust Browser Settings',
           ),
           _buildEditionSelector(context),
+          _buildEngineToggle(context, browser),
           _buildTorToggle(context, browser),
           _buildAutoplayToggle(context, browser),
           _buildGhosteryToggle(context, browser),
@@ -194,6 +195,79 @@ class SettingsPanel extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEngineToggle(BuildContext context, BrowserProvider browser) {
+    final activeEngine = browser.activeEngine;
+    final isProEngine = browser.isProEngineEnabled;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isProEngine ? KodairTheme.primaryBlue : const Color(0xFFCCCCCC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Text(
+              'Pro Engine',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: isProEngine ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Enable Pro Engine', style: TextStyle(color: Colors.white)),
+            subtitle: Text(
+              isProEngine
+                  ? 'Active engine: ${browser.activeEngineLabel}'
+                  : 'Uses the Standard engine',
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            value: isProEngine,
+            activeColor: KodairTheme.primaryBlue,
+            onChanged: (_) => browser.toggleProEngine(),
+          ),
+          if (isProEngine)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: BrowserEngine.values
+                    .where((engine) => engine != BrowserEngine.standard)
+                    .map(
+                      (engine) => ChoiceChip(
+                        label: Text(browserEngineLabel(engine)),
+                        selected: activeEngine == engine,
+                        selectedColor: KodairTheme.primaryBlue,
+                        backgroundColor: Colors.white12,
+                        labelStyle: TextStyle(
+                          color: activeEngine == engine ? Colors.white : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        side: BorderSide(color: activeEngine == engine ? Colors.white : Colors.white24),
+                        onSelected: (_) => browser.setBrowserEngine(engine),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
         ],
       ),
     );

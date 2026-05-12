@@ -6,6 +6,27 @@ import '../services/tor_service.dart';
 
 enum PanelType { info, settings, accounts, aiAgent }
 
+enum BrowserEngine { standard, gecko, chromium }
+
+BrowserEngine browserEngineFromStorage(String? value) {
+  if (value == null) return BrowserEngine.standard;
+  for (final engine in BrowserEngine.values) {
+    if (engine.name == value) return engine;
+  }
+  return BrowserEngine.standard;
+}
+
+String browserEngineLabel(BrowserEngine engine) {
+  switch (engine) {
+    case BrowserEngine.standard:
+      return 'Standard';
+    case BrowserEngine.gecko:
+      return 'Gecko';
+    case BrowserEngine.chromium:
+      return 'Chromium';
+  }
+}
+
 class TabState extends ChangeNotifier {
   String currentAppUrl;
   String currentAppName;
@@ -84,6 +105,8 @@ class BrowserProvider extends ChangeNotifier {
   // Tab Management
   final List<TabState> _tabs = [];
   int _activeTabIndex = 0;
+  BrowserEngine _activeEngine = BrowserEngine.standard;
+  BrowserEngine _lastProEngine = BrowserEngine.chromium;
 
   BrowserProvider() {
     _loadState();
@@ -106,6 +129,10 @@ class BrowserProvider extends ChangeNotifier {
       _isTorEnabled = prefs.getBool('tor_enabled') ?? false;
       _isGhosteryEnabled = prefs.getBool('isGhosteryEnabled') ?? false;
       _isAliasVaultEnabled = prefs.getBool('isAliasVaultEnabled') ?? false;
+      _activeEngine = browserEngineFromStorage(prefs.getString('browser_engine'));
+      if (_activeEngine != BrowserEngine.standard) {
+        _lastProEngine = _activeEngine;
+      }
     } catch (e) {
       debugPrint('Error loading tabs: $e');
     }
@@ -136,6 +163,7 @@ class BrowserProvider extends ChangeNotifier {
       await prefs.setBool('isSidebarCollapsed', _isSidebarCollapsed);
       await prefs.setBool('isGhosteryEnabled', _isGhosteryEnabled);
       await prefs.setBool('isAliasVaultEnabled', _isAliasVaultEnabled);
+      await prefs.setString('browser_engine', _activeEngine.name);
     } catch (e) {
       debugPrint('Error saving tabs: $e');
     }
@@ -180,6 +208,9 @@ class BrowserProvider extends ChangeNotifier {
   bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
   bool get isGhosteryEnabled => _isGhosteryEnabled;
+  BrowserEngine get activeEngine => _activeEngine;
+  bool get isProEngineEnabled => _activeEngine != BrowserEngine.standard;
+  String get activeEngineLabel => browserEngineLabel(_activeEngine);
   bool get isAliasVaultEnabled => _isAliasVaultEnabled;
   bool get isAliasVaultOverlayOpen => _isAliasVaultOverlayOpen;
   String get aliasVaultUrl => _aliasVaultUrl;
@@ -310,6 +341,27 @@ class BrowserProvider extends ChangeNotifier {
 
   void toggleGhostery() async {
     _isGhosteryEnabled = !_isGhosteryEnabled;
+    await _saveState();
+    notifyListeners();
+  }
+
+  Future<void> setBrowserEngine(BrowserEngine engine) async {
+    if (_activeEngine == engine) return;
+    if (engine != BrowserEngine.standard) {
+      _lastProEngine = engine;
+    }
+    _activeEngine = engine;
+    await _saveState();
+    notifyListeners();
+  }
+
+  Future<void> toggleProEngine() async {
+    if (_activeEngine == BrowserEngine.standard) {
+      _activeEngine = _lastProEngine;
+    } else {
+      _lastProEngine = _activeEngine;
+      _activeEngine = BrowserEngine.standard;
+    }
     await _saveState();
     notifyListeners();
   }
