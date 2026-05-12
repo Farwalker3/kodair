@@ -34,6 +34,8 @@ class SettingsPanel extends StatelessWidget {
           _buildEditionSelector(context),
           _buildTorToggle(context, browser),
           _buildAutoplayToggle(context, browser),
+          _buildGhosteryToggle(context, browser),
+          _buildAliasVaultToggle(context, browser),
           _buildFullscreenCard(context),
           _buildResetCard(context),
           _buildAboutCard(context),
@@ -76,6 +78,82 @@ class SettingsPanel extends StatelessWidget {
             value: browser.isAutoplayBlocked,
             activeColor: KodairTheme.primaryBlue,
             onChanged: (val) => browser.toggleAutoplayBlocker(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGhosteryToggle(BuildContext context, BrowserProvider browser) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: browser.isGhosteryEnabled ? const Color(0xFF7C3AED) : const Color(0xFFCCCCCC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Text(
+              'Ghostery Ad Blocking',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: browser.isGhosteryEnabled ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Block Common Ads', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('Hides common ad and tracker elements from pages.', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            value: browser.isGhosteryEnabled,
+            activeColor: const Color(0xFF7C3AED),
+            onChanged: (_) => browser.toggleGhostery(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAliasVaultToggle(BuildContext context, BrowserProvider browser) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KodairTheme.searchInputBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: browser.isAliasVaultEnabled ? const Color(0xFF0EA5E9) : const Color(0xFFCCCCCC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Text(
+              'AliasVault Password Bridge',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: browser.isAliasVaultEnabled ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Open AliasVault on password fields', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('Detects password forms and opens app.aliasvault.net in an overlay.', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            value: browser.isAliasVaultEnabled,
+            activeColor: const Color(0xFF0EA5E9),
+            onChanged: (_) => browser.toggleAliasVaultBridge(),
           ),
         ],
       ),

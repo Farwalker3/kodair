@@ -104,6 +104,8 @@ class BrowserProvider extends ChangeNotifier {
       }
       _isSidebarCollapsed = prefs.getBool('isSidebarCollapsed') ?? false;
       _isTorEnabled = prefs.getBool('tor_enabled') ?? false;
+      _isGhosteryEnabled = prefs.getBool('isGhosteryEnabled') ?? false;
+      _isAliasVaultEnabled = prefs.getBool('isAliasVaultEnabled') ?? false;
     } catch (e) {
       debugPrint('Error loading tabs: $e');
     }
@@ -132,6 +134,8 @@ class BrowserProvider extends ChangeNotifier {
       await prefs.setBool('isTorEnabled', _isTorEnabled);
       await prefs.setBool('isAutoplayBlocked', _isAutoplayBlocked);
       await prefs.setBool('isSidebarCollapsed', _isSidebarCollapsed);
+      await prefs.setBool('isGhosteryEnabled', _isGhosteryEnabled);
+      await prefs.setBool('isAliasVaultEnabled', _isAliasVaultEnabled);
     } catch (e) {
       debugPrint('Error saving tabs: $e');
     }
@@ -151,6 +155,11 @@ class BrowserProvider extends ChangeNotifier {
   bool _isTorEnabled = false;
   bool _isAutoplayBlocked = true;
   bool _isSidebarCollapsed = false;
+  bool _isGhosteryEnabled = false;
+  bool _isAliasVaultEnabled = false;
+  bool _isAliasVaultOverlayOpen = false;
+  String _aliasVaultUrl = 'https://app.aliasvault.net';
+  String? _aliasVaultSourceUrl;
   bool _torRequiresRestart = false;
 
   // Getters for active tab wrappers
@@ -170,6 +179,11 @@ class BrowserProvider extends ChangeNotifier {
   bool get isTorEnabled => _isTorEnabled;
   bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
+  bool get isGhosteryEnabled => _isGhosteryEnabled;
+  bool get isAliasVaultEnabled => _isAliasVaultEnabled;
+  bool get isAliasVaultOverlayOpen => _isAliasVaultOverlayOpen;
+  String get aliasVaultUrl => _aliasVaultUrl;
+  String? get aliasVaultSourceUrl => _aliasVaultSourceUrl;
   bool get torRequiresRestart => _torRequiresRestart;
 
   void toggleTrails() {
@@ -284,8 +298,41 @@ class BrowserProvider extends ChangeNotifier {
   }
 
   /// Toggle search overlay
+  void openSearch() {
+    _isSearchOpen = true;
+    notifyListeners();
+  }
+
   void toggleSearch() {
     _isSearchOpen = !_isSearchOpen;
+    notifyListeners();
+  }
+
+  void toggleGhostery() async {
+    _isGhosteryEnabled = !_isGhosteryEnabled;
+    await _saveState();
+    notifyListeners();
+  }
+
+  void toggleAliasVaultBridge() async {
+    _isAliasVaultEnabled = !_isAliasVaultEnabled;
+    if (!_isAliasVaultEnabled) {
+      _isAliasVaultOverlayOpen = false;
+      _aliasVaultSourceUrl = null;
+    }
+    await _saveState();
+    notifyListeners();
+  }
+
+  void openAliasVaultOverlay({String? sourceUrl}) {
+    _aliasVaultSourceUrl = sourceUrl;
+    _isAliasVaultOverlayOpen = true;
+    notifyListeners();
+  }
+
+  void closeAliasVaultOverlay() {
+    _isAliasVaultOverlayOpen = false;
+    _aliasVaultSourceUrl = null;
     notifyListeners();
   }
 
@@ -326,5 +373,7 @@ class BrowserProvider extends ChangeNotifier {
     _isAccountsPanelOpen = false;
     _isAiAgentPanelOpen = false;
     _isSearchOpen = false;
+    _isAliasVaultOverlayOpen = false;
+    _aliasVaultSourceUrl = null;
   }
 }

@@ -32,12 +32,43 @@ class KodBar extends StatelessWidget {
       ),
       child: Column(
         children: [
+          _buildTopControlsRow(context, browser),
           // Search button
           _buildSearchButton(context, browser),
           // Scrollable app buttons — 2 PER ROW
           Expanded(child: _buildAppBar(context, browser)),
           // Boot bar with date/time
           _buildBootBar(context, browser),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopControlsRow(BuildContext context, BrowserProvider browser) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      color: KodairTheme.sizeBarBg,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _miniBtn(
+            icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
+            tooltip: browser.isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
+            onTap: () => browser.toggleSidebar(),
+          ),
+          const SizedBox(width: 4),
+          _miniBtn(
+            icon: Icons.account_circle,
+            tooltip: 'Account',
+            onTap: () => browser.togglePanel(PanelType.accounts),
+          ),
+          const SizedBox(width: 4),
+          _miniBtn(
+            icon: Icons.settings,
+            tooltip: 'Settings',
+            onTap: () => browser.togglePanel(PanelType.settings),
+          ),
         ],
       ),
     );
@@ -93,10 +124,6 @@ class KodBar extends StatelessWidget {
         () => browser.togglePanel(PanelType.aiAgent)));
     allButtons.add(_utilBtn(Icons.route, 'Trails',
         () => browser.toggleTrails()));
-    allButtons.add(_utilBtn(Icons.account_circle, 'Account',
-        () => browser.togglePanel(PanelType.accounts)));
-    allButtons.add(_utilBtn(Icons.settings, 'Settings',
-        () => browser.togglePanel(PanelType.settings)));
     allButtons.add(_utilBtn(Icons.info, 'About',
         () => browser.togglePanel(PanelType.info)));
     
@@ -336,6 +363,30 @@ class KodBar extends StatelessWidget {
             child: const Text('Add'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _miniBtn({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: KodairTheme.appButtonBg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Icon(icon, size: 15, color: KodairTheme.appButtonText),
+          ),
+        ),
       ),
     );
   }

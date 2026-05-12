@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../providers/browser_provider.dart';
@@ -215,6 +216,7 @@ class BrowserScreen extends StatelessWidget {
 
           // ===== SEARCH OVERLAY =====
           if (browser.isSearchOpen) const SearchOverlay(),
+          if (browser.isAliasVaultOverlayOpen) const _AliasVaultOverlay(),
         ],
       ),
     );
@@ -237,16 +239,6 @@ class BrowserScreen extends StatelessWidget {
           _TitleBarBtn(icon: Icons.fullscreen, hoverColor: KodairTheme.fullscreenGreen, onTap: () => appWindow.maximizeOrRestore(), tooltip: 'Fullscreen'),
           _TitleBarBtn(icon: Icons.arrow_back, hoverColor: KodairTheme.backBlue, onTap: browser.canGoBack ? () => browser.goBack() : null, tooltip: 'Back'),
           _TitleBarBtn(icon: Icons.arrow_forward, hoverColor: KodairTheme.forwardCyan, onTap: browser.canGoForward ? () => browser.goForward() : null, tooltip: 'Forward'),
-
-          const SizedBox(width: 4),
-
-          // --- SIDEBAR TOGGLE ---
-          _TitleBarBtn(
-            icon: browser.isSidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
-            hoverColor: KodairTheme.primaryBlue,
-            onTap: () => browser.toggleSidebar(),
-            tooltip: browser.isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
-          ),
 
           const SizedBox(width: 8),
 
@@ -324,7 +316,10 @@ class BrowserScreen extends StatelessWidget {
     final isActive = index == browser.activeTabIndex;
 
     return GestureDetector(
-      onTap: () => browser.setActiveTab(index),
+      onTap: () {
+        browser.setActiveTab(index);
+        browser.openSearch();
+      },
       onSecondaryTapDown: (details) => _showTabContextMenu(context, details.globalPosition, browser, index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -401,6 +396,119 @@ class BrowserScreen extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// AliasVault overlay shown when a password field is detected.
+class _AliasVaultOverlay extends StatefulWidget {
+  const _AliasVaultOverlay();
+
+  @override
+  State<_AliasVaultOverlay> createState() => _AliasVaultOverlayState();
+}
+
+class _AliasVaultOverlayState extends State<_AliasVaultOverlay> {
+  bool _isLoading = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final browser = context.watch<BrowserProvider>();
+    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withAlpha(160),
+        child: SafeArea(
+          child: Center(
+            child: Container(
+              width: isMobile ? double.infinity : 980,
+              height: isMobile ? double.infinity : 720,
+              margin: isMobile ? EdgeInsets.zero : const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827),
+                borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withAlpha(20)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withAlpha(90), blurRadius: 24, offset: const Offset(0, 12)),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(18),
+                    child: InAppWebView(
+                      initialUrlRequest: URLRequest(url: WebUri(browser.aliasVaultUrl)),
+                      initialSettings: InAppWebViewSettings(
+                        javaScriptEnabled: true,
+                        domStorageEnabled: true,
+                        allowsInlineMediaPlayback: true,
+                        allowsBackForwardNavigationGestures: true,
+                        transparentBackground: false,
+                        supportZoom: true,
+                        useWideViewPort: true,
+                      ),
+                      onLoadStart: (_, __) {
+                        if (mounted) setState(() => _isLoading = true);
+                      },
+                      onLoadStop: (_, __) {
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                      onReceivedError: (_, __, ___) {
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                      onPermissionRequest: (controller, request) async {
+                        return PermissionResponse(
+                          resources: request.resources,
+                          action: PermissionResponseAction.GRANT,
+                        );
+                      },
+                    ),
+                  ),
+                  if (_isLoading)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(KodairTheme.primaryBlue),
+                      ),
+                    ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Tooltip(
+                      message: 'Close AliasVault',
+                      child: IconButton(
+                        onPressed: browser.closeAliasVaultOverlay,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    right: 56,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'AliasVault',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        if (browser.aliasVaultSourceUrl != null)
+                          Text(
+                            browser.aliasVaultSourceUrl!,
+                            style: const TextStyle(color: Colors.white54, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

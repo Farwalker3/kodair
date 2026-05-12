@@ -46,6 +46,64 @@ const String _pointerLockJS = '''
 })();
 ''';
 
+const String _ghosteryAdBlockJS = '''
+(function() {
+  if (window.__kodairGhosteryInstalled) return;
+  window.__kodairGhosteryInstalled = true;
+
+  var selectors = [
+    '[id*="ad-"]', '[id*="ads-"]', '[id^="ad-"]', '[class*=" ad-"]', '[class^="ad-"]',
+    '[class*="ads-"]', '[class^="ads-"]', '[data-ad]', '[data-ads]', '[aria-label*="advert"]',
+    'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]', 'iframe[src*="adservice"]',
+    'div[id*="banner-ad"]', 'div[class*="banner-ad"]', 'ins.adsbygoogle', '.ad', '.ads', '.advert',
+    '.advertisement', '.sponsored', '.sponsor', '.promo-ad', '.ad-banner', '.adsbox'
+  ];
+
+  function hideMatches(root) {
+    var nodes = (root || document).querySelectorAll(selectors.join(','));
+    nodes.forEach(function(node) {
+      if (node && node.style) {
+        node.style.setProperty('display', 'none', 'important');
+        node.style.setProperty('visibility', 'hidden', 'important');
+        node.style.setProperty('height', '0', 'important');
+        node.style.setProperty('min-height', '0', 'important');
+      }
+    });
+  }
+
+  hideMatches(document);
+  new MutationObserver(function() {
+    hideMatches(document);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+''';
+
+const String _aliasVaultBridgeJS = '''
+(function() {
+  if (window.__kodairAliasVaultBridgeInstalled) return;
+  window.__kodairAliasVaultBridgeInstalled = true;
+
+  function hasPasswordField() {
+    return Array.from(document.querySelectorAll('input[type="password"], input[autocomplete*="password"], input[name*="pass" i]')).length > 0;
+  }
+
+  function notifyIfNeeded() {
+    if (!hasPasswordField() || window.__kodairAliasVaultNotified) return;
+    window.__kodairAliasVaultNotified = true;
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+      window.flutter_inappwebview.callHandler('aliasVaultBridge', window.location.href, document.title);
+    } else {
+      console.log('__ALIASVAULT_OPEN__');
+    }
+  }
+
+  notifyIfNeeded();
+  new MutationObserver(function() {
+    notifyIfNeeded();
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+})();
+''';
+
 /// Content viewer using InAppWebView with scroll fix and pointer lock
 /// workaround for Windows.
 class ContentView extends StatefulWidget {
@@ -209,6 +267,7 @@ class _ContentViewState extends State<ContentView> {
                       ),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
+                  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                   domStorageEnabled: true,
                   allowsInlineMediaPlayback: true,
                   mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
@@ -225,13 +284,33 @@ class _ContentViewState extends State<ContentView> {
                     source: _pointerLockJS,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                   ),
+                  if (browser.isGhosteryEnabled)
+                    UserScript(
+                      source: _ghosteryAdBlockJS,
+                      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                    ),
+                  if (browser.isAliasVaultEnabled && !widget.tabState.currentAppUrl.contains('app.aliasvault.net'))
+                    UserScript(
+                      source: _aliasVaultBridgeJS,
+                      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                    ),
                 ]),
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
                   widget.tabState.webViewController = controller;
                   _lastUrl = widget.tabState.currentAppUrl;
+                  controller.addJavaScriptHandler(
+                    handlerName: 'aliasVaultBridge',
+                    callback: (args) {
+                      final sourceUrl = args.isNotEmpty ? args[0]?.toString() : null;
+                      if (browser.isAliasVaultEnabled) {
+                        browser.openAliasVaultOverlay(sourceUrl: sourceUrl);
+                      }
+                      return {'opened': true};
+                    },
+                  );
                 },
-                onLoadStart: (controller, url) {
+                onLoadStart: (controller, url) async {
                   if (mounted) setState(() => _isLoading = true);
                   
                   if (url != null) {
@@ -239,7 +318,7 @@ class _ContentViewState extends State<ContentView> {
                     if (url.toString().contains('youtube.com/shorts')) {
                       shouldBlock = false;
                     }
-                    controller.setSettings(settings: InAppWebViewSettings(
+                    await controller.setSettings(settings: InAppWebViewSettings(
                       javaScriptEnabled: true,
                       domStorageEnabled: true,
                       allowsInlineMediaPlayback: true,
@@ -311,6 +390,14 @@ class _ContentViewState extends State<ContentView> {
   document.head.appendChild(s);
 })();
 ''');
+                    }
+
+                    if (browser.isGhosteryEnabled) {
+                      await controller.evaluateJavascript(source: _ghosteryAdBlockJS);
+                    }
+
+                    if (browser.isAliasVaultEnabled && !urlStr.contains('app.aliasvault.net')) {
+                      await controller.evaluateJavascript(source: _aliasVaultBridgeJS);
                     }
                   }
                 },
