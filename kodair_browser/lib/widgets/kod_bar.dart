@@ -119,6 +119,8 @@ class KodBar extends StatelessWidget {
     
     // Add custom app button
     allButtons.add(_addAppBtn(context, sidebar));
+    allButtons.add(_utilBtn(Icons.vpn_key, 'AliasVault',
+        () => browser.openAliasVaultOverlay(sourceUrl: browser.currentAppUrl)));
     
     // Add utility buttons at the end
     allButtons.add(_utilBtn(Icons.smart_toy, 'AI Agent',

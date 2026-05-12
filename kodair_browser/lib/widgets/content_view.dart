@@ -346,11 +346,18 @@ class _ContentViewState extends State<ContentView> {
                   controller.addJavaScriptHandler(
                     handlerName: 'aliasVaultBridge',
                     callback: (args) {
-                      final sourceUrl = args.isNotEmpty ? args[0]?.toString() : null;
-                      if (browser.isAliasVaultEnabled) {
-                        browser.openAliasVaultOverlay(sourceUrl: sourceUrl);
+                      final browser = context.read<BrowserProvider>();
+                      final isOpenRequest = args.length >= 2 && args[0] is String && args[1] is String;
+                      final sourceUrl = isOpenRequest ? args[0] as String : null;
+                      if (isOpenRequest) {
+                        if (browser.isAliasVaultEnabled) {
+                          browser.openAliasVaultOverlay(sourceUrl: sourceUrl);
+                        }
+                        return {'opened': true};
                       }
-                      return {'opened': true};
+
+                      browser.closeAliasVaultOverlay();
+                      return {'closed': true};
                     },
                   );
                 },
@@ -424,10 +431,6 @@ class _ContentViewState extends State<ContentView> {
   document.head.appendChild(s);
 })();
 ''');
-                    }
-
-                    if (browser.isGhosteryEnabled) {
-                      await controller.evaluateJavascript(source: _ghosteryAdBlockJS);
                     }
 
                     if (browser.isAliasVaultEnabled && !urlStr.contains('app.aliasvault.net')) {
