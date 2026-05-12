@@ -15,6 +15,7 @@ import '../widgets/settings_panel.dart';
 import '../widgets/accounts_panel.dart';
 import '../widgets/trails_manager.dart';
 import '../widgets/search_overlay.dart';
+import '../widgets/download_overlay.dart';
 import '../widgets/mobile_bottom_bar.dart';
 import '../widgets/ai_agent_panel.dart';
 
@@ -217,6 +218,7 @@ class BrowserScreen extends StatelessWidget {
           // ===== SEARCH OVERLAY =====
           if (browser.isSearchOpen) const SearchOverlay(),
           if (browser.isAliasVaultOverlayOpen) const _AliasVaultOverlay(),
+          const DownloadOverlay(),
         ],
       ),
     );
@@ -748,4 +750,3 @@ class _FloatingCirclesState extends State<_FloatingCircles>
     );
   }
 }
-

@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../providers/browser_provider.dart';
+import '../services/download_service.dart';
 import '../theme/kodair_theme.dart';
 import '../utils/native_cursor.dart';
 
@@ -123,6 +124,7 @@ class _ContentViewState extends State<ContentView> {
   String? _lastUrl;
   bool _isLoading = true;
   bool _isPointerLocked = false;
+  final DownloadService _downloadService = DownloadService();
   
   WebViewEnvironment? _webViewEnvironment;
   bool _isEnvLoading = true;
@@ -423,6 +425,9 @@ class _ContentViewState extends State<ContentView> {
                 },
                 onReceivedError: (controller, request, error) {
                   if (mounted) setState(() => _isLoading = false);
+                },
+                onDownloadStartRequest: (controller, request) async {
+                  await _downloadService.download(context: context, request: request);
                 },
                 onPermissionRequest: (controller, request) async {
                   return PermissionResponse(

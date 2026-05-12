@@ -6,6 +6,7 @@ import 'providers/browser_provider.dart';
 import 'providers/trails_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/sidebar_provider.dart';
+import 'providers/download_provider.dart';
 import 'providers/edition_provider.dart';
 import 'providers/ai_agent_provider.dart';
 import 'theme/kodair_theme.dart';
@@ -60,6 +61,7 @@ class KodairBrowserApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BrowserProvider()),
+        ChangeNotifierProvider(create: (_) => DownloadProvider()),
         ChangeNotifierProvider(create: (_) => TrailsProvider()),
         ChangeNotifierProvider(create: (_) => SidebarProvider()),
         ChangeNotifierProvider(create: (_) => EditionProvider()),
