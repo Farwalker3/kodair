@@ -63,7 +63,7 @@ class KodBar extends StatelessWidget {
             tooltip: 'Account',
             onTap: () => browser.togglePanel(PanelType.accounts),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _miniBtn(
             icon: Icons.settings,
             tooltip: 'Settings',
@@ -254,7 +254,7 @@ class KodBar extends StatelessWidget {
                 labelStyle: const TextStyle(color: Colors.white54),
                 filled: true,
                 fillColor: const Color(0xFF1A1A2E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide.none),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 12),
