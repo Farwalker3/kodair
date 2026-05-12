@@ -107,8 +107,8 @@ const String _aliasVaultBridgeJS = '''
 const String _defaultDesktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0';
 
-/// Content viewer using InAppWebView with scroll fix and pointer lock
-/// workaround for Windows.
+/// Content viewer using InAppWebView with scroll fix, pointer lock, and
+/// Microsoft auth settings that avoid intercepting POST redirects.
 class ContentView extends StatefulWidget {
   final TabState tabState;
   
@@ -157,7 +157,7 @@ class _ContentViewState extends State<ContentView> {
       verticalScrollBarEnabled: true,
       horizontalScrollBarEnabled: true,
       mediaPlaybackRequiresUserGesture: mediaPlaybackRequiresUserGesture,
-      useShouldOverrideUrlLoading: true,
+      useShouldOverrideUrlLoading: false,
     );
   }
 
@@ -322,23 +322,6 @@ class _ContentViewState extends State<ContentView> {
                       injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     ),
                 ]),
-                shouldOverrideUrlLoading: (controller, navigationAction) async {
-                  final requestUrl = navigationAction.request.url?.toString();
-                  final requestMethod = navigationAction.request.method?.toUpperCase();
-                  if (_isMicrosoftAuthUrl(requestUrl)) {
-                    final browser = context.read<BrowserProvider>();
-                    await controller.setSettings(
-                      settings: _settingsForUrl(
-                        requestUrl,
-                        mediaPlaybackRequiresUserGesture: browser.isAutoplayBlocked,
-                      ),
-                    );
-                  }
-                  if (requestMethod == 'POST') {
-                    return NavigationActionPolicy.ALLOW;
-                  }
-                  return NavigationActionPolicy.ALLOW;
-                },
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
                   widget.tabState.webViewController = controller;
