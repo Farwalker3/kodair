@@ -8,6 +8,19 @@ import '../services/tor_service.dart';
 
 enum PanelType { info, settings, accounts, aiAgent }
 
+enum BrowserEngine { standard, geckoview, webview2 }
+
+String browserEngineLabel(BrowserEngine engine) {
+  switch (engine) {
+    case BrowserEngine.standard:
+      return "Standard";
+    case BrowserEngine.geckoview:
+      return "GeckoView";
+    case BrowserEngine.webview2:
+      return "WebView2";
+  }
+}
+
 class TabState extends ChangeNotifier {
   String currentAppUrl;
   String currentAppName;
@@ -108,6 +121,18 @@ class BrowserProvider extends ChangeNotifier {
       _isTorEnabled = prefs.getBool('tor_enabled') ?? false;
       _isGhosteryEnabled = prefs.getBool('isGhosteryEnabled') ?? false;
       _isAliasVaultEnabled = prefs.getBool('isAliasVaultEnabled') ?? false;
+      _isProEngineEnabled = prefs.getBool('isProEngineEnabled') ?? false;
+      final storedEngine = prefs.getString('browserEngine');
+      if (storedEngine != null) {
+        try {
+          _activeEngine = BrowserEngine.values.byName(storedEngine);
+        } catch (_) {
+          _activeEngine = BrowserEngine.standard;
+        }
+      }
+      if (_activeEngine != BrowserEngine.standard) {
+        _isProEngineEnabled = true;
+      }
       final nativeExtensionsJson = prefs.getString('nativeExtensions');
       if (nativeExtensionsJson != null) {
         final decodedExtensions = jsonDecode(nativeExtensionsJson) as List<dynamic>;
@@ -147,6 +172,8 @@ class BrowserProvider extends ChangeNotifier {
       await prefs.setBool('isSidebarCollapsed', _isSidebarCollapsed);
       await prefs.setBool('isGhosteryEnabled', _isGhosteryEnabled);
       await prefs.setBool('isAliasVaultEnabled', _isAliasVaultEnabled);
+      await prefs.setBool('isProEngineEnabled', _isProEngineEnabled);
+      await prefs.setString('browserEngine', _activeEngine.name);
       await prefs.setString('nativeExtensions', jsonEncode(_nativeExtensions.map((item) => item.toJson()).toList()));
     } catch (e) {
       debugPrint('Error saving tabs: $e');
@@ -169,6 +196,8 @@ class BrowserProvider extends ChangeNotifier {
   bool _isSidebarCollapsed = false;
   bool _isGhosteryEnabled = false;
   bool _isAliasVaultEnabled = false;
+  bool _isProEngineEnabled = false;
+  BrowserEngine _activeEngine = BrowserEngine.standard;
   bool _isAliasVaultOverlayOpen = false;
   String _aliasVaultUrl = 'https://app.aliasvault.net';
   String? _aliasVaultSourceUrl;
@@ -195,6 +224,9 @@ class BrowserProvider extends ChangeNotifier {
   bool get isSidebarCollapsed => _isSidebarCollapsed;
   bool get isGhosteryEnabled => _isGhosteryEnabled;
   bool get isAliasVaultEnabled => _isAliasVaultEnabled;
+  bool get isProEngineEnabled => _isProEngineEnabled;
+  BrowserEngine get activeEngine => _activeEngine;
+  String get activeEngineLabel => browserEngineLabel(_activeEngine);
   bool get isAliasVaultOverlayOpen => _isAliasVaultOverlayOpen;
   String get aliasVaultUrl => _aliasVaultUrl;
   String? get aliasVaultSourceUrl => _aliasVaultSourceUrl;
@@ -361,6 +393,26 @@ class BrowserProvider extends ChangeNotifier {
   void toggleGhostery() async {
     _isGhosteryEnabled = !_isGhosteryEnabled;
     await _saveState();
+    notifyListeners();
+  }
+
+  void toggleProEngine() {
+    _isProEngineEnabled = !_isProEngineEnabled;
+    if (_isProEngineEnabled) {
+      if (_activeEngine == BrowserEngine.standard) {
+        _activeEngine = BrowserEngine.geckoview;
+      }
+    } else {
+      _activeEngine = BrowserEngine.standard;
+    }
+    _saveState();
+    notifyListeners();
+  }
+
+  void setBrowserEngine(BrowserEngine engine) {
+    _activeEngine = engine;
+    _isProEngineEnabled = engine != BrowserEngine.standard;
+    _saveState();
     notifyListeners();
   }
 
