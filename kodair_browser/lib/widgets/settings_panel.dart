@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/browser_provider.dart';
+import '../providers/browser_provider.dart' show BrowserProvider, BrowserEngine, browserEngineLabel;
 import '../providers/edition_provider.dart';
 import '../providers/sidebar_provider.dart';
 import '../services/update_service.dart';
@@ -239,7 +239,7 @@ class SettingsPanel extends StatelessWidget {
             ),
             value: isProEngine,
             activeColor: KodairTheme.primaryBlue,
-            onChanged: (_) => browser.toggleProEngine(),
+            onChanged: (_) => context.read<BrowserProvider>().toggleProEngine(),
           ),
           if (isProEngine)
             Padding(
@@ -262,7 +262,7 @@ class SettingsPanel extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                         side: BorderSide(color: activeEngine == engine ? Colors.white : Colors.white24),
-                        onSelected: (_) => browser.setBrowserEngine(engine),
+                        onSelected: (_) => context.read<BrowserProvider>().setBrowserEngine(engine),
                       ),
                     )
                     .toList(),
