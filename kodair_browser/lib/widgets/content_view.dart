@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../providers/browser_provider.dart';
 import '../services/download_service.dart';
+import '../services/native_extension_service.dart';
 import '../theme/kodair_theme.dart';
 import '../utils/native_cursor.dart';
 
@@ -125,6 +126,7 @@ class _ContentViewState extends State<ContentView> {
   bool _isLoading = true;
   bool _isPointerLocked = false;
   final DownloadService _downloadService = DownloadService();
+  final NativeExtensionService _nativeExtensionService = NativeExtensionService.instance;
   
   WebViewEnvironment? _webViewEnvironment;
   bool _isEnvLoading = true;
@@ -159,7 +161,7 @@ class _ContentViewState extends State<ContentView> {
       verticalScrollBarEnabled: true,
       horizontalScrollBarEnabled: true,
       mediaPlaybackRequiresUserGesture: mediaPlaybackRequiresUserGesture,
-      useShouldOverrideUrlLoading: false,
+      useShouldOverrideUrlLoading: true,
     );
   }
 
@@ -346,6 +348,21 @@ class _ContentViewState extends State<ContentView> {
                     },
                   );
                 },
+                shouldOverrideUrlLoading: (controller, navigationAction) async {
+                  final uri = navigationAction.request.url;
+                  if (uri != null) {
+                    final browser = context.read<BrowserProvider>();
+                    final installed = await _nativeExtensionService.installExtensionFromUri(
+                      uri: Uri.parse(uri.toString()),
+                      pageUrl: widget.tabState.currentAppUrl,
+                    );
+                    if (installed != null) {
+                      browser.registerNativeExtension(installed);
+                      return NavigationActionPolicy.CANCEL;
+                    }
+                  }
+                  return NavigationActionPolicy.ALLOW;
+                },
                 onLoadStart: (controller, url) async {
                   if (mounted) setState(() => _isLoading = true);
 
@@ -427,6 +444,17 @@ class _ContentViewState extends State<ContentView> {
                   if (mounted) setState(() => _isLoading = false);
                 },
                 onDownloadStartRequest: (controller, request) async {
+                  final browser = context.read<BrowserProvider>();
+                  final installed = await _nativeExtensionService.installExtensionFromUri(
+                    uri: Uri.parse(request.url.toString()),
+                    pageUrl: widget.tabState.currentAppUrl,
+                    suggestedFilename: request.suggestedFilename,
+                  );
+                  if (installed != null) {
+                    browser.registerNativeExtension(installed);
+                    browser.openExtensionPopup(installed.id);
+                    return;
+                  }
                   await _downloadService.download(context: context, request: request);
                 },
                 onPermissionRequest: (controller, request) async {

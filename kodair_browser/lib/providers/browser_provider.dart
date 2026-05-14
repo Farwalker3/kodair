@@ -2,30 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import '../models/browser_extension_item.dart';
+import '../services/native_extension_service.dart';
 import '../services/tor_service.dart';
 
 enum PanelType { info, settings, accounts, aiAgent }
-
-enum BrowserEngine { standard, gecko, chromium }
-
-BrowserEngine browserEngineFromStorage(String? value) {
-  if (value == null) return BrowserEngine.standard;
-  for (final engine in BrowserEngine.values) {
-    if (engine.name == value) return engine;
-  }
-  return BrowserEngine.standard;
-}
-
-String browserEngineLabel(BrowserEngine engine) {
-  switch (engine) {
-    case BrowserEngine.standard:
-      return 'Standard';
-    case BrowserEngine.gecko:
-      return 'Gecko';
-    case BrowserEngine.chromium:
-      return 'Chromium';
-  }
-}
 
 class TabState extends ChangeNotifier {
   String currentAppUrl;
@@ -105,8 +86,6 @@ class BrowserProvider extends ChangeNotifier {
   // Tab Management
   final List<TabState> _tabs = [];
   int _activeTabIndex = 0;
-  BrowserEngine _activeEngine = BrowserEngine.standard;
-  BrowserEngine _lastProEngine = BrowserEngine.chromium;
 
   BrowserProvider() {
     _loadState();
@@ -129,9 +108,14 @@ class BrowserProvider extends ChangeNotifier {
       _isTorEnabled = prefs.getBool('tor_enabled') ?? false;
       _isGhosteryEnabled = prefs.getBool('isGhosteryEnabled') ?? false;
       _isAliasVaultEnabled = prefs.getBool('isAliasVaultEnabled') ?? false;
-      _activeEngine = browserEngineFromStorage(prefs.getString('browser_engine'));
-      if (_activeEngine != BrowserEngine.standard) {
-        _lastProEngine = _activeEngine;
+      final nativeExtensionsJson = prefs.getString('nativeExtensions');
+      if (nativeExtensionsJson != null) {
+        final decodedExtensions = jsonDecode(nativeExtensionsJson) as List<dynamic>;
+        _nativeExtensions.addAll(
+          decodedExtensions
+              .map((entry) => BrowserExtensionItem.fromJson(Map<String, dynamic>.from(entry as Map)))
+              .toList(),
+        );
       }
     } catch (e) {
       debugPrint('Error loading tabs: $e');
@@ -163,7 +147,7 @@ class BrowserProvider extends ChangeNotifier {
       await prefs.setBool('isSidebarCollapsed', _isSidebarCollapsed);
       await prefs.setBool('isGhosteryEnabled', _isGhosteryEnabled);
       await prefs.setBool('isAliasVaultEnabled', _isAliasVaultEnabled);
-      await prefs.setString('browser_engine', _activeEngine.name);
+      await prefs.setString('nativeExtensions', jsonEncode(_nativeExtensions.map((item) => item.toJson()).toList()));
     } catch (e) {
       debugPrint('Error saving tabs: $e');
     }
@@ -189,6 +173,8 @@ class BrowserProvider extends ChangeNotifier {
   String _aliasVaultUrl = 'https://app.aliasvault.net';
   String? _aliasVaultSourceUrl;
   bool _torRequiresRestart = false;
+  final List<BrowserExtensionItem> _nativeExtensions = [];
+  String? _activeExtensionPopupId;
 
   // Getters for active tab wrappers
   String get currentAppUrl => activeTab.currentAppUrl;
@@ -208,14 +194,47 @@ class BrowserProvider extends ChangeNotifier {
   bool get isAutoplayBlocked => _isAutoplayBlocked;
   bool get isSidebarCollapsed => _isSidebarCollapsed;
   bool get isGhosteryEnabled => _isGhosteryEnabled;
-  BrowserEngine get activeEngine => _activeEngine;
-  bool get isProEngineEnabled => _activeEngine != BrowserEngine.standard;
-  String get activeEngineLabel => browserEngineLabel(_activeEngine);
   bool get isAliasVaultEnabled => _isAliasVaultEnabled;
   bool get isAliasVaultOverlayOpen => _isAliasVaultOverlayOpen;
   String get aliasVaultUrl => _aliasVaultUrl;
   String? get aliasVaultSourceUrl => _aliasVaultSourceUrl;
   bool get torRequiresRestart => _torRequiresRestart;
+  String? get activeExtensionPopupId => _activeExtensionPopupId;
+
+  BrowserExtensionItem? get activeExtensionPopup {
+    final activeId = _activeExtensionPopupId;
+    if (activeId == null) return null;
+    for (final item in extensionToolbarItems) {
+      if (item.id == activeId) return item;
+    }
+    return null;
+  }
+
+  List<BrowserExtensionItem> get extensionToolbarItems {
+    final items = <BrowserExtensionItem>[
+      BrowserExtensionItem(
+        id: 'ghostery',
+        name: 'Ghostery',
+        icon: Icons.shield_outlined,
+        enabled: _isGhosteryEnabled,
+        isBuiltIn: true,
+        description: 'Ghostery content controls and ad blocking are wired into the native browser surface.',
+        nativeEngine: 'geckoview/webview2',
+      ),
+      BrowserExtensionItem(
+        id: 'aliasvault',
+        name: 'AliasVault',
+        icon: Icons.key_outlined,
+        enabled: _isAliasVaultEnabled,
+        isBuiltIn: true,
+        description: 'AliasVault detection opens a native credential flow when password fields appear.',
+        nativeEngine: 'geckoview/webview2',
+      ),
+    ];
+
+    items.addAll(_nativeExtensions);
+    return List.unmodifiable(items);
+  }
 
   void toggleTrails() {
     _isTrailsOpen = !_isTrailsOpen;
@@ -345,27 +364,6 @@ class BrowserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setBrowserEngine(BrowserEngine engine) async {
-    if (_activeEngine == engine) return;
-    if (engine != BrowserEngine.standard) {
-      _lastProEngine = engine;
-    }
-    _activeEngine = engine;
-    await _saveState();
-    notifyListeners();
-  }
-
-  Future<void> toggleProEngine() async {
-    if (_activeEngine == BrowserEngine.standard) {
-      _activeEngine = _lastProEngine;
-    } else {
-      _lastProEngine = _activeEngine;
-      _activeEngine = BrowserEngine.standard;
-    }
-    await _saveState();
-    notifyListeners();
-  }
-
   void toggleAliasVaultBridge() async {
     _isAliasVaultEnabled = !_isAliasVaultEnabled;
     if (!_isAliasVaultEnabled) {
@@ -373,6 +371,49 @@ class BrowserProvider extends ChangeNotifier {
       _aliasVaultSourceUrl = null;
     }
     await _saveState();
+    notifyListeners();
+  }
+
+  void registerNativeExtension(BrowserExtensionItem extension) {
+    final index = _nativeExtensions.indexWhere((item) => item.id == extension.id);
+    if (index >= 0) {
+      _nativeExtensions[index] = extension;
+    } else {
+      _nativeExtensions.add(extension);
+    }
+    _saveState();
+    notifyListeners();
+  }
+
+  void setNativeExtensionEnabled(String id, bool enabled) {
+    final index = _nativeExtensions.indexWhere((item) => item.id == id);
+    if (index < 0) return;
+    _nativeExtensions[index] = _nativeExtensions[index].copyWith(enabled: enabled);
+    _saveState();
+    notifyListeners();
+  }
+
+  void removeNativeExtension(String id) {
+    _nativeExtensions.removeWhere((item) => item.id == id);
+    if (_activeExtensionPopupId == id) {
+      _activeExtensionPopupId = null;
+    }
+    _saveState();
+    notifyListeners();
+  }
+
+  void openExtensionPopup(String id) {
+    _activeExtensionPopupId = id;
+    NativeExtensionService.instance.openExtensionPopup(id, pageUrl: currentAppUrl);
+    notifyListeners();
+  }
+
+  void closeExtensionPopup() {
+    final activeId = _activeExtensionPopupId;
+    _activeExtensionPopupId = null;
+    if (activeId != null) {
+      NativeExtensionService.instance.closeExtensionPopup(activeId);
+    }
     notifyListeners();
   }
 
@@ -427,5 +468,6 @@ class BrowserProvider extends ChangeNotifier {
     _isSearchOpen = false;
     _isAliasVaultOverlayOpen = false;
     _aliasVaultSourceUrl = null;
+    _activeExtensionPopupId = null;
   }
 }

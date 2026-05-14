@@ -18,6 +18,7 @@ import '../widgets/search_overlay.dart';
 import '../widgets/download_overlay.dart';
 import '../widgets/mobile_bottom_bar.dart';
 import '../widgets/ai_agent_panel.dart';
+import '../widgets/extension_toolbar.dart';
 
 class BrowserScreen extends StatelessWidget {
   const BrowserScreen({super.key});
@@ -48,7 +49,7 @@ class BrowserScreen extends StatelessWidget {
             child: Column(
               children: [
                 // Mobile Top Status Bar Header (Edge-To-Edge safe)
-                if (isMobile)
+                if (isMobile) ...[
                   Container(
                     color: KodairTheme.appBarBg,
                     width: double.infinity,
@@ -66,6 +67,14 @@ class BrowserScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (browser.extensionToolbarItems.isNotEmpty)
+                    Container(
+                      color: KodairTheme.sizeBarBg,
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: const ExtensionToolbar(compact: true),
+                    ),
+                ],
 
                 // Custom window title bar with ALL controls (hidden on mobile)
                 _buildCustomTitleBar(context, browser),
@@ -219,6 +228,7 @@ class BrowserScreen extends StatelessWidget {
           if (browser.isSearchOpen) const SearchOverlay(),
           if (browser.isAliasVaultOverlayOpen) const _AliasVaultOverlay(),
           const DownloadOverlay(),
+          const ExtensionPopupOverlay(),
         ],
       ),
     );
@@ -292,6 +302,14 @@ class BrowserScreen extends StatelessWidget {
             ),
           ),
 
+          SizedBox(
+            width: 260,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ExtensionToolbar(compact: false),
+            ),
+          ),
+
           // --- RIGHT: Window management buttons ---
           MinimizeWindowButton(
             colors: WindowButtonColors(
@@ -324,46 +342,19 @@ class BrowserScreen extends StatelessWidget {
     final tab = browser.tabs[index];
     final isActive = index == browser.activeTabIndex;
 
-    return GestureDetector(
-      onTap: () {
+    return _EditableTab(
+      key: ObjectKey(tab),
+      tab: tab,
+      isActive: isActive,
+      onActivate: () => browser.setActiveTab(index),
+      onSubmit: (value) {
+        final target = _tabTargetForInput(value);
         browser.setActiveTab(index);
-        browser.openSearch();
+        browser.navigateToApp(target, name: value.trim());
       },
       onSecondaryTapDown: (details) => _showTabContextMenu(context, details.globalPosition, browser, index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 140,
-        margin: const EdgeInsets.only(right: 2, top: 4, bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withAlpha(40) : Colors.white.withAlpha(10),
-          borderRadius: BorderRadius.circular(6),
-          border: isActive ? Border.all(color: Colors.white.withAlpha(80), width: 1) : null,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                tab.currentAppName,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive ? Colors.white : Colors.white70,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (browser.tabs.length > 1)
-              InkWell(
-                onTap: () => browser.closeTab(index),
-                hoverColor: Colors.red.withAlpha(150),
-                borderRadius: BorderRadius.circular(10),
-                child: const Icon(Icons.close, size: 12, color: Colors.white70),
-              ),
-          ],
-        ),
-      ),
+      showCloseButton: browser.tabs.length > 1,
+      onClose: () => browser.closeTab(index),
     );
   }
 
@@ -408,6 +399,195 @@ class BrowserScreen extends StatelessWidget {
     );
   }
 }
+
+String _tabTargetForInput(String input) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty) return 'https://kodair.us/Welcome/Welcome.html';
+
+  final uri = Uri.tryParse(trimmed);
+  if (uri != null && uri.hasScheme) {
+    return trimmed;
+  }
+
+  if (!trimmed.contains(RegExp(r'\s')) && trimmed.contains('.')) {
+    return 'https://$trimmed';
+  }
+
+  return 'https://www.google.com/search?q=${Uri.encodeComponent(trimmed)}';
+}
+
+class _EditableTab extends StatefulWidget {
+  final TabState tab;
+  final bool isActive;
+  final VoidCallback onActivate;
+  final ValueChanged<String> onSubmit;
+  final GestureTapDownCallback onSecondaryTapDown;
+  final bool showCloseButton;
+  final VoidCallback onClose;
+
+  const _EditableTab({
+    super.key,
+    required this.tab,
+    required this.isActive,
+    required this.onActivate,
+    required this.onSubmit,
+    required this.onSecondaryTapDown,
+    required this.showCloseButton,
+    required this.onClose,
+  });
+
+  @override
+  State<_EditableTab> createState() => _EditableTabState();
+}
+
+class _EditableTabState extends State<_EditableTab> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.tab.currentAppName);
+    _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_editing && oldWidget.tab.currentAppName != widget.tab.currentAppName && _controller.text != widget.tab.currentAppName) {
+      _controller.text = widget.tab.currentAppName;
+    }
+    if (!widget.isActive && _editing) {
+      _editing = false;
+      _focusNode.unfocus();
+      _controller.text = widget.tab.currentAppName;
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus && _editing) {
+      setState(() {
+        _editing = false;
+        _controller.text = widget.tab.currentAppName;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _beginEditing() {
+    widget.onActivate();
+    setState(() {
+      _editing = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.selection = TextSelection(baseOffset: 0, extentOffset: _controller.text.length);
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _submit() {
+    final value = _controller.text.trim();
+    if (value.isEmpty) {
+      setState(() {
+        _editing = false;
+        _controller.text = widget.tab.currentAppName;
+      });
+      _focusNode.unfocus();
+      return;
+    }
+
+    widget.onSubmit(value);
+    setState(() {
+      _editing = false;
+    });
+    _focusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = widget.isActive ? Colors.white.withAlpha(100) : Colors.white.withAlpha(20);
+    final backgroundColor = _editing
+        ? Colors.white.withAlpha(50)
+        : widget.isActive
+            ? Colors.white.withAlpha(40)
+            : Colors.white.withAlpha(10);
+
+    return GestureDetector(
+      onTap: _beginEditing,
+      onSecondaryTapDown: widget.onSecondaryTapDown,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 140,
+        margin: const EdgeInsets.only(right: 2, top: 4, bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: borderColor, width: widget.isActive || _editing ? 1 : 0),
+          boxShadow: _editing
+              ? [BoxShadow(color: Colors.blue.withAlpha(60), blurRadius: 8, spreadRadius: 1)]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _editing
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      autofocus: true,
+                      onSubmitted: (_) => _submit(),
+                      textInputAction: TextInputAction.go,
+                      keyboardType: TextInputType.url,
+                      cursorColor: Colors.white,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        hintText: 'Search or enter address',
+                        hintStyle: TextStyle(fontSize: 11, color: Colors.white54),
+                      ),
+                    )
+                  : Text(
+                      widget.tab.currentAppName,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w400,
+                        color: widget.isActive ? Colors.white : Colors.white70,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+            ),
+            if (widget.showCloseButton)
+              InkWell(
+                onTap: widget.onClose,
+                hoverColor: Colors.red.withAlpha(150),
+                borderRadius: BorderRadius.circular(10),
+                child: const Icon(Icons.close, size: 12, color: Colors.white70),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 /// AliasVault overlay shown when a password field is detected.
 class _AliasVaultOverlay extends StatefulWidget {
