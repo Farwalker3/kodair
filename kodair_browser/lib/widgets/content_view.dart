@@ -106,8 +106,9 @@ const String _aliasVaultBridgeJS = '''
 })();
 ''';
 
-const String _defaultDesktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0';
+const String _geckoFirefoxUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:138.0) Gecko/20100101 Firefox/138.0';
+const String _chromiumChromeUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0';
 
 /// Content viewer using InAppWebView with scroll fix, pointer lock, and
 /// Microsoft auth settings that avoid intercepting POST redirects.
@@ -136,7 +137,10 @@ class _ContentViewState extends State<ContentView> {
     if (_isMicrosoftAuthUrl(url)) {
       return _microsoftAuthUserAgent;
     }
-    return _defaultDesktopUserAgent;
+    if (!kIsWeb && Platform.isLinux) {
+      return _geckoFirefoxUserAgent;
+    }
+    return _chromiumChromeUserAgent;
   }
 
   bool _isMicrosoftAuthUrl(String? url) {
@@ -161,7 +165,7 @@ class _ContentViewState extends State<ContentView> {
       verticalScrollBarEnabled: true,
       horizontalScrollBarEnabled: true,
       mediaPlaybackRequiresUserGesture: mediaPlaybackRequiresUserGesture,
-      useShouldOverrideUrlLoading: true,
+      useShouldOverrideUrlLoading: !_isMicrosoftAuthUrl(url),
     );
   }
 
@@ -351,9 +355,13 @@ class _ContentViewState extends State<ContentView> {
                 shouldOverrideUrlLoading: (controller, navigationAction) async {
                   final uri = navigationAction.request.url;
                   if (uri != null) {
+                    final uriString = uri.toString();
+                    if (_isMicrosoftAuthUrl(uriString)) {
+                      return NavigationActionPolicy.ALLOW;
+                    }
                     final browser = context.read<BrowserProvider>();
                     final installed = await _nativeExtensionService.installExtensionFromUri(
-                      uri: Uri.parse(uri.toString()),
+                      uri: Uri.parse(uriString),
                       pageUrl: widget.tabState.currentAppUrl,
                     );
                     if (installed != null) {
