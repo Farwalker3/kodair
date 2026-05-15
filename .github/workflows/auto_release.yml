@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'kodair_browser/pubspec.yaml' # Triggers automatically when you increment your Flutter version number
+      - 'kodair_browser/pubspec.yaml'
 
 jobs:
   build-android:
@@ -31,6 +31,18 @@ jobs:
         with:
           flutter-version: '3.38.5'
           channel: 'stable'
+          cache: false
+
+      - name: Precache Android artifacts
+        run: flutter precache --android
+
+      - name: Clean Flutter build outputs
+        working-directory: ./kodair_browser
+        run: flutter clean
+
+      - name: Fetch Flutter dependencies
+        working-directory: ./kodair_browser
+        run: flutter pub get
 
       - name: Decode Android Keystore
         run: |
@@ -77,6 +89,18 @@ jobs:
         with:
           flutter-version: '3.38.5'
           channel: 'stable'
+          cache: false
+
+      - name: Precache Windows artifacts
+        run: flutter precache --windows
+
+      - name: Clean Flutter build outputs
+        working-directory: ./kodair_browser
+        run: flutter clean
+
+      - name: Fetch Flutter dependencies
+        working-directory: ./kodair_browser
+        run: flutter pub get
 
       - name: Get Version
         run: |
@@ -132,9 +156,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: Kodair Browser v${{ env.VERSION }}
-          body: "Automated Native Release Pipeline triggered by version increment. 
-
-Includes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
+          body: "Automated Native Release Pipeline triggered by version increment. \n\nIncludes Android Edge-To-Edge fixes, YouTube Autoplay configurations, and full Windows Installer integrity."
           files: |
             release-binaries/app-release.apk
             release-binaries/KodairInstaller.exe
