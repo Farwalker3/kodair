@@ -1,6 +1,6 @@
 [Setup]
 AppName=Kodair Browser
-AppVersion=1.0.1
+AppVersion=1.6.2+33
 DefaultDirName={autopf}\Kodair
 ; `PrivilegesRequired=lowest` is the magic flag! 
 ; It forces the installer to run without requiring Admin rights,
