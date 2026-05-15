@@ -197,7 +197,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isGhosteryEnabled = false;
   bool _isAliasVaultEnabled = false;
   bool _isProEngineEnabled = false;
-  BrowserEngine _activeEngine = BrowserEngine.standard;
+  BrowserEngine _activeEngine = BrowserEngine.geckoview;
   bool _isAliasVaultOverlayOpen = false;
   String _aliasVaultUrl = 'https://app.aliasvault.net';
   String? _aliasVaultSourceUrl;
