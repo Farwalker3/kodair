@@ -137,7 +137,7 @@ class _ContentViewState extends State<ContentView> {
     if (_isMicrosoftAuthUrl(url)) {
       return _microsoftAuthUserAgent;
     }
-    if (!kIsWeb && Platform.isLinux) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isWindows || Platform.isLinux)) {
       return _geckoFirefoxUserAgent;
     }
     return _chromiumChromeUserAgent;
@@ -165,7 +165,7 @@ class _ContentViewState extends State<ContentView> {
       verticalScrollBarEnabled: true,
       horizontalScrollBarEnabled: true,
       mediaPlaybackRequiresUserGesture: mediaPlaybackRequiresUserGesture,
-      useShouldOverrideUrlLoading: !_isMicrosoftAuthUrl(url),
+      useShouldOverrideUrlLoading: true,
     );
   }
 
@@ -297,80 +297,98 @@ class _ContentViewState extends State<ContentView> {
                     }
                   : null,
               behavior: HitTestBehavior.translucent,
-              child: _isEnvLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(KodairTheme.torPurple),
-                      ),
-                    )
-                  : InAppWebView(
-                      key: ValueKey(_currentTorState),
-                      webViewEnvironment: _webViewEnvironment,
-                      initialUrlRequest: URLRequest(
-                        url: WebUri(widget.tabState.currentAppUrl),
-                      ),
-                initialSettings: _settingsForUrl(
-                  widget.tabState.currentAppUrl,
-                  mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
-                ),
-                // Inject pointer lock hook BEFORE any page scripts run
-                initialUserScripts: UnmodifiableListView([
-                  UserScript(
-                    source: _pointerLockJS,
-                    injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-                  ),
-                  if (browser.isGhosteryEnabled)
-                    UserScript(
-                      source: _ghosteryAdBlockJS,
-                      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+              child: Stack(
+                children: [
+                  InAppWebView(
+                    key: ValueKey(_currentTorState),
+                    webViewEnvironment: _webViewEnvironment,
+                    initialUrlRequest: URLRequest(
+                      url: WebUri(widget.tabState.currentAppUrl),
                     ),
-                  if (browser.isAliasVaultEnabled && !widget.tabState.currentAppUrl.contains('app.aliasvault.net'))
-                    UserScript(
-                      source: _aliasVaultBridgeJS,
-                      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                    initialSettings: _settingsForUrl(
+                      widget.tabState.currentAppUrl,
+                      mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
                     ),
-                ]),
-                onWebViewCreated: (controller) {
-                  _webViewController = controller;
-                  widget.tabState.webViewController = controller;
-                  _lastUrl = widget.tabState.currentAppUrl;
-                  controller.addJavaScriptHandler(
-                    handlerName: 'aliasVaultBridge',
-                    callback: (args) {
-                      final browser = context.read<BrowserProvider>();
-                      final isOpenRequest = args.length >= 2 && args[0] is String && args[1] is String;
-                      final sourceUrl = isOpenRequest ? args[0] as String : null;
-                      if (isOpenRequest) {
-                        if (browser.isAliasVaultEnabled) {
-                          browser.openAliasVaultOverlay(sourceUrl: sourceUrl);
-                        }
-                        return {'opened': true};
-                      }
+                    // Inject pointer lock hook BEFORE any page scripts run
+                    initialUserScripts: UnmodifiableListView([
+                      UserScript(
+                        source: _pointerLockJS,
+                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                      ),
+                      if (browser.isGhosteryEnabled)
+                        UserScript(
+                          source: _ghosteryAdBlockJS,
+                          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                        ),
+                      if (browser.isAliasVaultEnabled && !widget.tabState.currentAppUrl.contains('app.aliasvault.net'))
+                        UserScript(
+                          source: _aliasVaultBridgeJS,
+                          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                        ),
+                    ]),
+                    onWebViewCreated: (controller) {
+                      _webViewController = controller;
+                      widget.tabState.webViewController = controller;
+                      final initialUrl = widget.tabState.currentAppUrl;
+                      _lastUrl = initialUrl;
+                      controller.addJavaScriptHandler(
+                        handlerName: 'aliasVaultBridge',
+                        callback: (args) {
+                          final browser = context.read<BrowserProvider>();
+                          final isOpenRequest = args.length >= 2 && args[0] is String && args[1] is String;
+                          final sourceUrl = isOpenRequest ? args[0] as String : null;
+                          if (isOpenRequest) {
+                            if (browser.isAliasVaultEnabled) {
+                              browser.openAliasVaultOverlay(sourceUrl: sourceUrl);
+                            }
+                            return {'opened': true};
+                          }
 
-                      browser.closeAliasVaultOverlay();
-                      return {'closed': true};
+                          browser.closeAliasVaultOverlay();
+                          return {'closed': true};
+                        },
+                      );
+                      controller.loadUrl(urlRequest: URLRequest(url: WebUri(initialUrl)));
                     },
-                  );
-                },
-                shouldOverrideUrlLoading: (controller, navigationAction) async {
-                  final uri = navigationAction.request.url;
-                  if (uri != null) {
-                    final uriString = uri.toString();
-                    if (_isMicrosoftAuthUrl(uriString)) {
+                    shouldOverrideUrlLoading: (controller, navigationAction) async {
+                      final uri = navigationAction.request.url;
+                      if (uri != null) {
+                        final scheme = uri.scheme.toLowerCase();
+                        if (scheme != 'http' && scheme != 'https') {
+                          return NavigationActionPolicy.ALLOW;
+                        }
+                        final uriString = uri.toString();
+                        if (_isMicrosoftAuthUrl(uriString)) {
+                          return NavigationActionPolicy.ALLOW;
+                        }
+                        final browser = context.read<BrowserProvider>();
+                        final installed = await _nativeExtensionService.installExtensionFromUri(
+                          uri: Uri.parse(uriString),
+                          pageUrl: widget.tabState.currentAppUrl,
+                        );
+                        if (installed != null) {
+                          browser.registerNativeExtension(installed);
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                      }
                       return NavigationActionPolicy.ALLOW;
-                    }
-                    final browser = context.read<BrowserProvider>();
-                    final installed = await _nativeExtensionService.installExtensionFromUri(
-                      uri: Uri.parse(uriString),
-                      pageUrl: widget.tabState.currentAppUrl,
-                    );
-                    if (installed != null) {
-                      browser.registerNativeExtension(installed);
-                      return NavigationActionPolicy.CANCEL;
-                    }
-                  }
-                  return NavigationActionPolicy.ALLOW;
-                },
+                    },
+                  ),
+                  if (_isEnvLoading)
+                    const Positioned.fill(
+                      child: IgnorePointer(
+                        child: ColoredBox(
+                          color: Color(0x66000000),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(KodairTheme.torPurple),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
                 onLoadStart: (controller, url) async {
                   if (mounted) setState(() => _isLoading = true);
 
