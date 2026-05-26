@@ -106,6 +106,20 @@ const String _aliasVaultBridgeJS = '''
 })();
 ''';
 
+const String _firefoxExtensionInterceptorJS = '''
+(function() {
+  window.addEventListener('click', function(e) {
+    var target = e.target;
+    var link = target.closest('a');
+    if (link && (link.href.includes('.xpi') || link.textContent.includes('Add to Firefox') || link.classList.contains('AMOmasterkey-button'))) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      window.location.href = link.href;
+    }
+  }, true);
+})();
+''';
+
 const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0';
 
 /// Content viewer using InAppWebView with scroll fix, pointer lock, and
@@ -307,10 +321,13 @@ class _ContentViewState extends State<ContentView> {
                       widget.tabState.currentAppUrl,
                       mediaPlaybackRequiresUserGesture: widget.tabState.currentAppUrl.contains('youtube.com/shorts') ? false : context.read<BrowserProvider>().isAutoplayBlocked,
                     ),
-                    // Inject pointer lock hook BEFORE any page scripts run
                     initialUserScripts: UnmodifiableListView([
                       UserScript(
                         source: _pointerLockJS,
+                        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                      ),
+                      UserScript(
+                        source: _firefoxExtensionInterceptorJS,
                         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                       ),
                       if (browser.isGhosteryEnabled)

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/kodair_app.dart';
 
 /// Base URL for loading Kodair HTML apps remotely
-const String kodairBaseUrl = 'https://kodair.us/';
+const String kodairBaseUrl = 'http://127.0.0.1:8080/';
 
 /// Default sidebar apps — these are the factory defaults.
 /// SidebarProvider clones these on first run, then user edits are persisted separately.
@@ -29,5 +29,6 @@ List<KodairApp> get defaultKodairApps => [
   KodairApp.builtIn(name: 'Odra', url: '${kodairBaseUrl}odra/index.html', iconData: Icons.nightlight_round, position: 19),
   KodairApp.builtIn(name: 'Nixie', url: '${kodairBaseUrl}Nixie/Nixie.html', iconData: Icons.bolt, position: 20),
   KodairApp.builtIn(name: 'KodTodo', url: '${kodairBaseUrl}KodTodo/index.html', iconData: Icons.checklist, position: 21),
-  KodairApp.builtIn(name: 'AirStore', url: '${kodairBaseUrl}AirStore2.html', iconData: Icons.storefront, position: 22),
+  KodairApp.builtIn(name: 'Koparty', url: '${kodairBaseUrl}Koparty/Koparty.html', iconData: Icons.live_tv, position: 22),
+  KodairApp.builtIn(name: 'AirStore', url: '${kodairBaseUrl}AirStore2.html', iconData: Icons.storefront, position: 23),
 ];

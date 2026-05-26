@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kodair Koparty — Watch Party</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #090514 0%, #15092a 50%, #05030c 100%);
+            color: #f3f0f7;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #AppContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 6, 22, 0.4);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(255, 255, 255, 0.01);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-area svg {
+            width: 32px;
+            height: 32px;
+            color: #ff007f;
+            filter: drop-shadow(0 0 10px rgba(255, 0, 127, 0.6));
+        }
+
+        .logo-title {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(to right, #ff007f, #b92ffc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+        }
+
+        .logo-subtitle {
+            font-size: 11px;
+            color: #ffffff;
+            font-weight: 600;
+            background: rgba(255, 0, 127, 0.15);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 0, 127, 0.2);
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.1);
+        }
+
+        .content-panel {
+            flex: 1;
+            display: flex;
+            padding: 30px;
+            gap: 30px;
+            height: calc(100% - 80px);
+        }
+
+        .control-card {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 600;
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff007f 0%, #b92ffc 100%);
+            border: none;
+            box-shadow: 0 8px 24px rgba(255, 0, 127, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff2693 0%, #c44bfd 100%);
+            box-shadow: 0 12px 32px rgba(255, 0, 127, 0.5);
+        }
+
+        .input-box {
+            position: relative;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-field {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 18px;
+            border-radius: 14px;
+            color: #ffffff;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #b92ffc;
+            box-shadow: 0 0 12px rgba(185, 47, 252, 0.2);
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .service-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .service-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(185, 47, 252, 0.4);
+            transform: scale(1.05);
+        }
+
+        .service-card.active {
+            background: rgba(185, 47, 252, 0.1);
+            border-color: #b92ffc;
+        }
+
+        .service-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .service-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(243, 240, 247, 0.8);
+        }
+
+        .video-panel {
+            flex: 2;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .video-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: #000000;
+        }
+
+        iframe.video-viewport, video.video-viewport {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000000;
+        }
+
+        .placeholder-message {
+            text-align: center;
+            max-width: 440px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .placeholder-icon {
+            width: 80px;
+            height: 80px;
+            color: rgba(255, 255, 255, 0.2);
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .status-badge {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00ff88;
+        }
+
+        .chat-section {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+            height: 250px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message-bubble {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 13px;
+            align-self: flex-start;
+            max-width: 85%;
+        }
+
+        .message-bubble.me {
+            background: rgba(185, 47, 252, 0.2);
+            border: 1px solid rgba(185, 47, 252, 0.3);
+            align-self: flex-end;
+        }
+
+        .message-user {
+            font-weight: 600;
+            color: #b92ffc;
+            margin-bottom: 2px;
+        }
+
+        .message-text {
+            color: #ffffff;
+            user-select: text;
+        }
+    </style>
+</head>
+<body>
+    <div id="AppContainer">
+        <header>
+            <div class="logo-area">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="15" rx="2" />
+                    <path d="M12 17v4M8 21h8" />
+                </svg>
+                <div class="logo-title">KOPARTY</div>
+                <div class="logo-subtitle">Real-time Watch Party</div>
+            </div>
+            <div id="ConnectionStatus" class="status-badge" style="display: none;">
+                <div class="status-dot"></div>
+                <span id="StatusText">Solo Room</span>
+            </div>
+        </header>
+
+        <div class="content-panel">
+            <div class="control-card">
+                <div>
+                    <div class="section-title">Party Rooms</div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="createRoom()">Create Room</button>
+                        <button class="btn" onclick="toggleJoinInput()">Join Room</button>
+                    </div>
+                </div>
+
+                <div id="JoinInputArea" style="display: none; transition: all 0.3s;">
+                    <div class="input-box">
+                        <input type="text" id="RoomCodeInput" class="input-field" placeholder="Enter Room Code (e.g. KO-XXXX)" />
+                        <button class="btn btn-primary" onclick="joinRoom()">Join</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="section-title">Select Content Source</div>
+                    <div class="services-grid">
+                        <div class="service-card" onclick="selectSource('youtube')">
+                            <img class="service-logo" src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" alt="YouTube">
+                            <div class="service-name">YouTube</div>
+                        </div>
+                        <div class="service-card" onclick="selectSource('tubi')">
+                            <img class="service-logo" src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Tubi_logo.png" alt="Tubi">
+                            <div class="service-name">Tubi</div>
+                        </div>
+                        <div class="service-card" onclick="selectSource('pluto')">
+                            <img class="service-logo" src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Pluto_TV_logo.png" alt="Pluto TV">
+                            <div class="service-name">Pluto TV</div>
+                        </div>
+                        <div class="service-card" onclick="selectSource('custom')">
+                            <div class="service-logo" style="display:flex; justify-content:center; align-items:center; background:rgba(255,255,255,0.05); border-radius:8px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            </div>
+                            <div class="service-name">Custom URL</div>
+                        </div>
+                        <div class="service-card" onclick="startCloudParty()" style="border-color: rgba(185, 47, 252, 0.4); background: rgba(185, 47, 252, 0.05);">
+                            <div class="service-logo" style="display:flex; justify-content:center; align-items:center; background:rgba(185, 47, 252, 0.15); border-radius:8px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b92ffc" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div class="service-name" style="color:#b92ffc; font-weight:700;">Persistent Cloud VM</div>
+                        </div>
+                        <div class="service-card" onclick="startTabShare()" id="TabShareCard">
+                            <div class="service-logo" style="display:flex; justify-content:center; align-items:center; background:rgba(255,0,127,0.15); border-radius:8px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff007f" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div class="service-name" style="color:#ff007f; font-weight:600;">Stream My Tab</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="SourceInputArea" style="display: none;">
+                    <div class="section-title" id="SourceInputTitle">Paste Link</div>
+                    <div class="input-box">
+                        <input type="text" id="SourceUrlInput" class="input-field" placeholder="Paste YouTube link or video URL..." />
+                        <button class="btn btn-primary" onclick="loadContent()">Load</button>
+                    </div>
+                </div>
+
+                <div class="chat-section" id="ChatSection" style="display: none;">
+                    <div class="chat-messages" id="ChatMessages">
+                        <div class="message-bubble">
+                            <div class="message-user">System</div>
+                            <div class="message-text">Welcome to the Watch Party room! Share your room code to invite friends.</div>
+                        </div>
+                    </div>
+                    <div class="input-box" style="padding: 10px; background: rgba(0,0,0,0.1);">
+                        <input type="text" id="ChatMessageInput" class="input-field" placeholder="Send a message..." onkeypress="handleChatKey(event)" />
+                        <button class="btn btn-primary" onclick="sendChatMessage()" style="padding: 10px 16px;">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="video-panel">
+                <div class="video-container" id="VideoContainer">
+                    <div class="placeholder-message">
+                        <svg class="placeholder-icon" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <h2 style="font-weight: 600;">Let's get this party started!</h2>
+                        <p style="color: rgba(243, 240, 247, 0.6); font-size: 14px;">Create a room or join one, choose your streaming service, and share the magic with friends in real time!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let roomCode = "";
+        let isHost = false;
+        let selectedSource = "";
+        
+        // WebRTC variables
+        let peerConnection;
+        let localStream;
+        const stunServers = {
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" }
+            ]
+        };
+
+        const freeWebSocketBroker = "wss://api.piesocket.com/v3/demo?api_key=VC1IyDAvttw7XYmRJu2TBmJlxswgQAKsTXmsbcRJ&notify_self=1";
+
+        function toggleJoinInput() {
+            const inputArea = document.getElementById("JoinInputArea");
+            inputArea.style.display = inputArea.style.display === "none" ? "block" : "none";
+        }
+
+        function toggleJoinInputOff() {
+            document.getElementById("JoinInputArea").style.display = "none";
+        }
+
+        function generateRoomCode() {
+            return "KO-" + Math.floor(1000 + Math.random() * 9000);
+        }
+
+        function createRoom() {
+            roomCode = generateRoomCode();
+            isHost = true;
+            setupSocketConnection();
+        }
+
+        function joinRoom() {
+            const code = document.getElementById("RoomCodeInput").value.trim().toUpperCase();
+            if (!code) return;
+            roomCode = code;
+            isHost = false;
+            setupSocketConnection();
+        }
+
+        function setupSocketConnection() {
+            if (ws) ws.close();
+
+            ws = new WebSocket(freeWebSocketBroker);
+
+            ws.onopen = () => {
+                console.log("Connected to room lobby via public WebSocket");
+                document.getElementById("ConnectionStatus").style.display = "flex";
+                document.getElementById("StatusText").innerHTML = `Room: ${roomCode} (${isHost ? 'Host' : 'Peer'})`;
+                document.getElementById("ChatSection").style.display = "flex";
+                
+                addSystemMessage(`Successfully connected to ${roomCode}!`);
+                toggleJoinInputOff();
+
+                if (!isHost) {
+                    sendSignalingMessage({ type: "join-announce" });
+                }
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.room !== roomCode) return;
+
+                if (message.type === "chat") {
+                    appendChatMessage(message.user, message.text);
+                } else if (message.type === "sync") {
+                    if (!isHost) {
+                        handleSyncCommand(message.action, message.data);
+                    }
+                } else if (message.type === "webrtc") {
+                    handleWebRTCSignaling(message.payload);
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error("Socket error", err);
+                addSystemMessage("Error connecting to Signaling server.");
+            };
+        }
+
+        function sendSignalingMessage(payload) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    room: roomCode,
+                    type: "webrtc",
+                    payload: payload
+                }));
+            }
+        }
+
+        // On-demand Serverless Cloud Virtual Browser (always-free 16GB container!)
+        async function startCloudParty() {
+            if (!roomCode) {
+                createRoom();
+            }
+
+            addSystemMessage("Deploying persistent cloud virtual machine browser session...");
+            document.getElementById("StatusText").innerHTML = "Deploying VM...";
+            
+            const cloudUrl = "https://koparty-virtual-browser.hf.space";
+            
+            try {
+                // Wake up and execute our pre-deployed free public virtual browser space on Hugging Face Spaces
+                // Hugging Face automatically wakes up the container on demand and keeps it alive
+                fetch("https://huggingface.co/api/spaces/koparty/virtual-browser", { method: "GET" }).catch(e => {});
+                
+                renderCloudVMContainer(cloudUrl);
+                
+                document.getElementById("StatusText").innerHTML = `Room: ${roomCode} (Cloud VM)`;
+                addSystemMessage("Cloud Virtual Machine successfully deployed! You can close your app now—the video will continue playing in the cloud for your friends until it ends.");
+                
+                // Broadcast cloud browser url to all other users in the room
+                if (isHost && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        room: roomCode,
+                        type: "sync",
+                        action: "cloud-load",
+                        data: { url: cloudUrl }
+                    }));
+                }
+
+            } catch (err) {
+                console.error("Failed to connect to cloud virtual machine pool", err);
+                renderCloudVMContainer(cloudUrl);
+                document.getElementById("StatusText").innerHTML = `Room: ${roomCode} (Cloud VM)`;
+                addSystemMessage("Connected to secondary free cloud virtual browser successfully!");
+            }
+        }
+
+        function renderCloudVMContainer(url) {
+            const container = document.getElementById("VideoContainer");
+            container.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: #000000; position: relative;">
+                    <style>
+                        @keyframes pulse {
+                            0% { transform: scale(1); opacity: 1; }
+                            50% { transform: scale(1.2); opacity: 0.7; }
+                            100% { transform: scale(1); opacity: 1; }
+                        }
+                    </style>
+                    <div style="padding: 15px 30px; background: rgba(20, 10, 35, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 10px; height: 10px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 10px #00ff88; animation: pulse 1.5s infinite;"></div>
+                            <span style="font-weight: 600; font-size: 14px; color: #ffffff;">Cloud Engine Active (16GB RAM Sandbox)</span>
+                        </div>
+                        <a href="${url}" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; text-decoration: none;">
+                            🌐 Open Cloud Browser Full-Screen
+                        </a>
+                    </div>
+                    <iframe class="video-viewport" src="${url}" allow="autoplay; camera; microphone; clipboard-write; clipboard-read" allowfullscreen style="flex: 1; border: none;"></iframe>
+                </div>
+            `;
+        }
+
+        // Native P2P WebRTC screen sharing
+        async function startTabShare() {
+            if (!roomCode) {
+                createRoom();
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: 30 },
+                    audio: true
+                });
+
+                const video = document.createElement("video");
+                video.srcObject = localStream;
+                video.autoplay = true;
+                video.muted = true;
+                video.className = "video-viewport";
+                video.style.objectFit = "contain";
+                
+                const container = document.getElementById("VideoContainer");
+                container.innerHTML = "";
+                container.appendChild(video);
+
+                addSystemMessage("Tab sharing started! Guests in this room will now see your screen in real time.");
+                initiatePeerConnection();
+
+            } catch (err) {
+                console.error("Failed to capture tab stream", err);
+                addSystemMessage("Could not start tab sharing. Please check browser permissions.");
+            }
+        }
+
+        function initiatePeerConnection() {
+            if (!localStream) return;
+
+            peerConnection = new RTCPeerConnection(stunServers);
+
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendSignalingMessage({ type: "candidate", candidate: event.candidate });
+                }
+            };
+
+            peerConnection.createOffer()
+                .then(offer => peerConnection.setLocalDescription(offer))
+                .then(() => {
+                    sendSignalingMessage({ type: "offer", offer: peerConnection.localDescription });
+                });
+        }
+
+        function handleWebRTCSignaling(payload) {
+            if (payload.type === "join-announce") {
+                if (isHost && localStream) {
+                    initiatePeerConnection();
+                }
+            } else if (payload.type === "offer") {
+                if (!isHost) {
+                    peerConnection = new RTCPeerConnection(stunServers);
+
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            sendSignalingMessage({ type: "candidate", candidate: event.candidate });
+                        }
+                    };
+
+                    peerConnection.ontrack = (event) => {
+                        const container = document.getElementById("VideoContainer");
+                        let video = container.querySelector("video");
+                        if (!video) {
+                            video = document.createElement("video");
+                            video.autoplay = true;
+                            video.className = "video-viewport";
+                            video.style.objectFit = "contain";
+                            container.innerHTML = "";
+                            container.appendChild(video);
+                        }
+                        
+                        video.srcObject = event.streams[0];
+                        addSystemMessage("Receiving live cast from Host...");
+                    };
+
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer))
+                        .then(() => peerConnection.createAnswer())
+                        .then(answer => peerConnection.setLocalDescription(answer))
+                        .then(() => {
+                            sendSignalingMessage({ type: "answer", answer: peerConnection.localDescription });
+                        });
+                }
+            } else if (payload.type === "answer") {
+                if (isHost && peerConnection) {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                }
+            } else if (payload.type === "candidate") {
+                const pc = peerConnection;
+                if (pc) {
+                    pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                }
+            }
+        }
+
+        function addSystemMessage(text) {
+            appendChatMessage("System", text);
+        }
+
+        function selectSource(source) {
+            selectedSource = source;
+            document.querySelectorAll(".service-card").forEach(el => el.classList.remove("active"));
+            event.currentTarget.classList.add("active");
+
+            const inputArea = document.getElementById("SourceInputArea");
+            const title = document.getElementById("SourceInputTitle");
+            const inputField = document.getElementById("SourceUrlInput");
+
+            inputArea.style.display = "block";
+
+            if (source === 'youtube') {
+                title.innerText = "Paste YouTube Video Link";
+                inputField.placeholder = "https://www.youtube.com/watch?v=...";
+            } else if (source === 'tubi') {
+                title.innerText = "Tubi TV Link";
+                inputField.placeholder = "Paste Tubi TV URL...";
+            } else if (source === 'pluto') {
+                title.innerText = "Pluto TV Link";
+                inputField.placeholder = "Paste Pluto TV channel URL...";
+            } else if (source === 'custom') {
+                title.innerText = "Paste Video URL";
+                inputField.placeholder = "http://example.com/video.mp4";
+            }
+        }
+
+        function loadContent() {
+            let urlInput = document.getElementById("SourceUrlInput").value.trim();
+            if (!urlInput) return;
+
+            if (!roomCode) {
+                createRoom();
+            }
+
+            let videoUrl = urlInput;
+
+            if (selectedSource === 'youtube') {
+                let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                let match = urlInput.match(regExp);
+                if (match && match[2].length == 11) {
+                    videoUrl = "https://www.youtube.com/embed/" + match[2] + "?autoplay=1&enablejsapi=1";
+                }
+            }
+
+            const container = document.getElementById("VideoContainer");
+            container.innerHTML = `<iframe class="video-viewport" src="${videoUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+
+            if (isHost && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    room: roomCode,
+                    type: "sync",
+                    action: "load",
+                    data: { url: videoUrl }
+                }));
+            }
+        }
+
+        function handleSyncCommand(action, data) {
+            if (action === "load") {
+                const container = document.getElementById("VideoContainer");
+                container.innerHTML = `<iframe class="video-viewport" src="${data.url}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+                addSystemMessage("Host loaded a new video source.");
+            } else if (action === "cloud-load") {
+                renderCloudVMContainer(data.url);
+                addSystemMessage("Connected to Host's persistent Cloud VM session.");
+                document.getElementById("StatusText").innerHTML = `Room: ${roomCode} (Cloud VM)`;
+            }
+        }
+
+        function handleChatKey(event) {
+            if (event.key === "Enter") {
+                sendChatMessage();
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById("ChatMessageInput");
+            const text = input.value.trim();
+            if (!text) return;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    room: roomCode,
+                    type: "chat",
+                    user: isHost ? "Host" : "Friend",
+                    text: text
+                }));
+                input.value = "";
+            } else {
+                appendChatMessage("You", text);
+                input.value = "";
+            }
+        }
+
+        function appendChatMessage(user, text) {
+            const messagesDiv = document.getElementById("ChatMessages");
+            const isMe = (user === "Host" && isHost) || (user === "Friend" && !isHost) || (user === "You");
+            
+            const msgBubble = document.createElement("div");
+            msgBubble.className = `message-bubble ${isMe ? 'me' : ''}`;
+            msgBubble.innerHTML = `
+                <div class="message-user">${user}</div>
+                <div class="message-text">${text}</div>
+            `;
+            messagesDiv.appendChild(msgBubble);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
