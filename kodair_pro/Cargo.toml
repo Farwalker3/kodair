@@ -1,0 +1,37 @@
+[package]
+name = "kodair_pro"
+version = "0.1.0"
+edition = "2024"
+description = "Kodair Pro — the multi-engine browser with the most browser engines ever"
+license = "MIT"
+authors = ["Farwalker3"]
+
+[dependencies]
+# System WebView (WebView2 on Windows, WebKit on macOS/Linux)
+wry = "0.50"
+# Window management
+tao = "0.34"
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Servo engine (Rust-native) — experimental
+# servo = "0.1"   # TODO: Enable when build system is ready
+
+[target.'cfg(windows)'.dependencies]
+# Windows COM for Trident (MSHTML) engine
+windows = { version = "0.61", features = [
+    "Win32_System_Com",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

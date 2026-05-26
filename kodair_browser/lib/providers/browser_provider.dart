@@ -3,23 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../models/browser_extension_item.dart';
+import '../models/engine_profiles.dart';
 import '../services/native_extension_service.dart';
 import '../services/tor_service.dart';
 
-enum PanelType { info, settings, accounts, aiAgent }
+enum PanelType { info, settings, accounts, aiAgent, share }
 
-enum BrowserEngine { standard, geckoview, webview2 }
+/// All supported browser engine identifiers.
+/// Plain names map to real engine profiles in [EngineProfiles].
+enum BrowserEngine {
+  chrome,        // Blink / Chromium
+  firefox,       // Gecko
+  safari,        // WebKit
+  tor,           // Gecko + Tor Network
+  edge,          // Blink / WebView2
+  servo,         // Servo (Rust)
+  paleMoon,      // Goanna
+  netsurf,       // NetSurf
+  ladybird,      // LibWeb
+  operaClassic,  // Presto (legacy)
+  legacyEdge,    // EdgeHTML (legacy)
+  dillo,         // Dillo (legacy)
+  flow,          // Ekioh Flow (legacy)
+  khtml,         // KHTML (legacy)
+}
 
 String browserEngineLabel(BrowserEngine engine) {
-  switch (engine) {
-    case BrowserEngine.standard:
-      return "Standard";
-    case BrowserEngine.geckoview:
-      return "GeckoView";
-    case BrowserEngine.webview2:
-      return "WebView2";
-  }
+  return EngineProfiles.byId(engine.name).displayName;
 }
+
 
 class TabState extends ChangeNotifier {
   String currentAppUrl;
@@ -127,12 +139,10 @@ class BrowserProvider extends ChangeNotifier {
         try {
           _activeEngine = BrowserEngine.values.byName(storedEngine);
         } catch (_) {
-          _activeEngine = BrowserEngine.standard;
+          _activeEngine = BrowserEngine.chrome;
         }
       }
-      if (_activeEngine != BrowserEngine.standard) {
-        _isProEngineEnabled = true;
-      }
+      _isProEngineEnabled = _activeEngine != BrowserEngine.chrome;
       final nativeExtensionsJson = prefs.getString('nativeExtensions');
       if (nativeExtensionsJson != null) {
         final decodedExtensions = jsonDecode(nativeExtensionsJson) as List<dynamic>;
@@ -189,6 +199,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isSettingsPanelOpen = false;
   bool _isAccountsPanelOpen = false;
   bool _isAiAgentPanelOpen = false;
+  bool _isSharePanelOpen = false;
   bool _isSearchOpen = false;
   bool _isTrailsOpen = false;
   bool _isTorEnabled = false;
@@ -197,7 +208,7 @@ class BrowserProvider extends ChangeNotifier {
   bool _isGhosteryEnabled = false;
   bool _isAliasVaultEnabled = false;
   bool _isProEngineEnabled = false;
-  BrowserEngine _activeEngine = BrowserEngine.geckoview;
+  BrowserEngine _activeEngine = BrowserEngine.chrome;
   bool _isAliasVaultOverlayOpen = false;
   String _aliasVaultUrl = 'https://app.aliasvault.net';
   String? _aliasVaultSourceUrl;
@@ -217,6 +228,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isAccountsPanelOpen => _isAccountsPanelOpen;
   bool get isAccountsOpen => isAccountsPanelOpen;
   bool get isAiAgentPanelOpen => _isAiAgentPanelOpen;
+  bool get isSharePanelOpen => _isSharePanelOpen;
   bool get isSearchOpen => _isSearchOpen;
   bool get isTrailsOpen => _isTrailsOpen;
   bool get isTorEnabled => _isTorEnabled;
@@ -227,6 +239,7 @@ class BrowserProvider extends ChangeNotifier {
   bool get isProEngineEnabled => _isProEngineEnabled;
   BrowserEngine get activeEngine => _activeEngine;
   String get activeEngineLabel => browserEngineLabel(_activeEngine);
+  EngineProfile get activeEngineProfile => EngineProfiles.byId(_activeEngine.name);
   bool get isAliasVaultOverlayOpen => _isAliasVaultOverlayOpen;
   String get aliasVaultUrl => _aliasVaultUrl;
   String? get aliasVaultSourceUrl => _aliasVaultSourceUrl;
@@ -356,24 +369,35 @@ class BrowserProvider extends ChangeNotifier {
         _isSettingsPanelOpen = false;
         _isAccountsPanelOpen = false;
         _isAiAgentPanelOpen = false;
+        _isSharePanelOpen = false;
         break;
       case PanelType.settings:
         _isSettingsPanelOpen = !_isSettingsPanelOpen;
         _isInfoPanelOpen = false;
         _isAccountsPanelOpen = false;
         _isAiAgentPanelOpen = false;
+        _isSharePanelOpen = false;
         break;
       case PanelType.accounts:
         _isAccountsPanelOpen = !_isAccountsPanelOpen;
         _isInfoPanelOpen = false;
         _isSettingsPanelOpen = false;
         _isAiAgentPanelOpen = false;
+        _isSharePanelOpen = false;
         break;
       case PanelType.aiAgent:
         _isAiAgentPanelOpen = !_isAiAgentPanelOpen;
         _isInfoPanelOpen = false;
         _isSettingsPanelOpen = false;
         _isAccountsPanelOpen = false;
+        _isSharePanelOpen = false;
+        break;
+      case PanelType.share:
+        _isSharePanelOpen = !_isSharePanelOpen;
+        _isInfoPanelOpen = false;
+        _isSettingsPanelOpen = false;
+        _isAccountsPanelOpen = false;
+        _isAiAgentPanelOpen = false;
         break;
     }
     notifyListeners();
@@ -398,12 +422,8 @@ class BrowserProvider extends ChangeNotifier {
 
   void toggleProEngine() {
     _isProEngineEnabled = !_isProEngineEnabled;
-    if (_isProEngineEnabled) {
-      if (_activeEngine == BrowserEngine.standard) {
-        _activeEngine = BrowserEngine.geckoview;
-      }
-    } else {
-      _activeEngine = BrowserEngine.standard;
+    if (!_isProEngineEnabled) {
+      _activeEngine = BrowserEngine.chrome;
     }
     _saveState();
     notifyListeners();
@@ -411,7 +431,7 @@ class BrowserProvider extends ChangeNotifier {
 
   void setBrowserEngine(BrowserEngine engine) {
     _activeEngine = engine;
-    _isProEngineEnabled = engine != BrowserEngine.standard;
+    _isProEngineEnabled = engine != BrowserEngine.chrome;
     _saveState();
     notifyListeners();
   }
@@ -517,6 +537,7 @@ class BrowserProvider extends ChangeNotifier {
     _isSettingsPanelOpen = false;
     _isAccountsPanelOpen = false;
     _isAiAgentPanelOpen = false;
+    _isSharePanelOpen = false;
     _isSearchOpen = false;
     _isAliasVaultOverlayOpen = false;
     _aliasVaultSourceUrl = null;

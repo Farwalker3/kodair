@@ -1,0 +1,116 @@
+name: Kodair Pro Release Builder
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'kodair_pro/**'
+
+jobs:
+  build-windows:
+    name: Build Kodair Pro (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            kodair_pro/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('kodair_pro/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Release
+        working-directory: ./kodair_pro
+        run: cargo build --release
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodair-pro-windows
+          path: kodair_pro/target/release/kodair_pro.exe
+
+  build-linux:
+    name: Build Kodair Pro (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            kodair_pro/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('kodair_pro/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Release
+        working-directory: ./kodair_pro
+        run: cargo build --release
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodair-pro-linux
+          path: kodair_pro/target/release/kodair_pro
+
+  publish-release:
+    name: Draft Kodair Pro Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '^version\s*=\s*"\K[^"]+' kodair_pro/Cargo.toml)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-binaries
+          merge-multiple: true
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: kodair-pro-v${{ env.VERSION }}
+          name: Kodair Pro v${{ env.VERSION }}
+          body: |
+            Kodair Pro — The multi-engine browser with 17 browser engines.
+
+            Engines: Chrome (Blink), Firefox (Gecko), Safari (WebKit), Tor,
+            Edge, Servo, Internet Explorer (Trident), Pale Moon (Goanna),
+            Ladybird (LibWeb), NetSurf, Opera Classic (Presto), Edge Legacy (EdgeHTML),
+            Dillo, Flow (Ekioh), Konqueror (KHTML), System WebView, WebKitGTK
+          files: |
+            release-binaries/kodair_pro.exe
+            release-binaries/kodair_pro
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

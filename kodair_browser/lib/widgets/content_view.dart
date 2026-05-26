@@ -106,8 +106,6 @@ const String _aliasVaultBridgeJS = '''
 })();
 ''';
 
-const String _geckoFirefoxUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:138.0) Gecko/20100101 Firefox/138.0';
-const String _chromiumChromeUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 const String _microsoftAuthUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0';
 
 /// Content viewer using InAppWebView with scroll fix, pointer lock, and
@@ -133,14 +131,14 @@ class _ContentViewState extends State<ContentView> {
   bool _isEnvLoading = true;
   bool _currentTorState = false;
 
+  /// Returns the UA string based on the active engine profile.
+  /// Microsoft auth URLs always get an Edge UA for compatibility.
   String _userAgentForUrl(String? url) {
     if (_isMicrosoftAuthUrl(url)) {
       return _microsoftAuthUserAgent;
     }
-    if (!kIsWeb && (Platform.isAndroid || Platform.isWindows || Platform.isLinux)) {
-      return _geckoFirefoxUserAgent;
-    }
-    return _chromiumChromeUserAgent;
+    final browser = context.read<BrowserProvider>();
+    return browser.activeEngineProfile.userAgent;
   }
 
   bool _isMicrosoftAuthUrl(String? url) {
@@ -373,6 +371,115 @@ class _ContentViewState extends State<ContentView> {
                       }
                       return NavigationActionPolicy.ALLOW;
                     },
+                    onLoadStart: (controller, url) async {
+                      if (mounted) setState(() => _isLoading = true);
+
+                      if (url != null) {
+                        final urlStr = url.toString();
+                        var shouldBlock = context.read<BrowserProvider>().isAutoplayBlocked;
+                        if (urlStr.contains('youtube.com/shorts')) {
+                          shouldBlock = false;
+                        }
+                        await controller.setSettings(
+                          settings: _settingsForUrl(
+                            urlStr,
+                            mediaPlaybackRequiresUserGesture: shouldBlock,
+                          ),
+                        );
+                      }
+                    },
+                    onUpdateVisitedHistory: (controller, url, isReload) async {
+                      if (mounted && url != null) {
+                        final browser = context.read<BrowserProvider>();
+                        final urlStr = url.toString();
+                        browser.activeTab.updateHistory(urlStr, '');
+                        var shouldBlock = browser.isAutoplayBlocked;
+                        if (urlStr.contains('youtube.com/shorts')) {
+                          shouldBlock = false;
+                        }
+                        await controller.setSettings(
+                          settings: _settingsForUrl(
+                            urlStr,
+                            mediaPlaybackRequiresUserGesture: shouldBlock,
+                          ),
+                        );
+                      }
+                    },
+                    onLoadStop: (controller, url) async {
+                      if (!_isEnvLoading && mounted) {
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        final browser = context.read<BrowserProvider>();
+                        browser.activeTab.updateHistory(url.toString(), '');
+
+                        // Inline Auto-Play Block for YouTube
+                        if (url.toString().contains('youtube.com')) {
+                          controller.evaluateJavascript(source: '''
+                            setInterval(() => {
+                              if (!window.location.href.includes('/watch') && !window.location.href.includes('/shorts')) {
+                                document.querySelectorAll('video').forEach(v => v.pause());
+                              }
+                            }, 500);
+                          ''');
+                        }
+
+                        // Inject OpenWidget on the Welcome page
+                        final urlStr = url?.toString() ?? '';
+                        if (urlStr.contains('Welcome')) {
+                          await controller.evaluateJavascript(source: '''
+(function() {
+  if (window.OpenWidget) return;
+  window.__ow = window.__ow || {};
+  window.__ow.organizationId = "d22ade09-9a15-40b4-b6e3-1efe8fe15e61";
+  window.__ow.integration_name = "manual_settings";
+  window.__ow.product_name = "openwidget";
+  var s = document.createElement("script");
+  s.async = true;
+  s.type = "text/javascript";
+  s.src = "https://cdn.openwidget.com/openwidget.js";
+  document.head.appendChild(s);
+})();
+''');
+                        }
+
+                        if (browser.isAliasVaultEnabled && !urlStr.contains('app.aliasvault.net')) {
+                          await controller.evaluateJavascript(source: _aliasVaultBridgeJS);
+                        }
+                      }
+                    },
+                    onReceivedError: (controller, request, error) {
+                      if (mounted) setState(() => _isLoading = false);
+                    },
+                    onDownloadStartRequest: (controller, request) async {
+                      final browser = context.read<BrowserProvider>();
+                      final installed = await _nativeExtensionService.installExtensionFromUri(
+                        uri: Uri.parse(request.url.toString()),
+                        pageUrl: widget.tabState.currentAppUrl,
+                        suggestedFilename: request.suggestedFilename,
+                      );
+                      if (installed != null) {
+                        browser.registerNativeExtension(installed);
+                        browser.openExtensionPopup(installed.id);
+                        return;
+                      }
+                      await _downloadService.download(context: context, request: request);
+                    },
+                    onPermissionRequest: (controller, request) async {
+                      return PermissionResponse(
+                        resources: request.resources,
+                        action: PermissionResponseAction.GRANT,
+                      );
+                    },
+                    // Detect pointer lock signals from JS
+                    onConsoleMessage: (controller, consoleMessage) {
+                      final msg = consoleMessage.message;
+                      if (msg == '__PTRLOCK:true') {
+                        _setPointerLock(true);
+                      } else if (msg == '__PTRLOCK:false') {
+                        _setPointerLock(false);
+                      }
+                    },
                   ),
                   if (_isEnvLoading)
                     const Positioned.fill(
@@ -389,118 +496,8 @@ class _ContentViewState extends State<ContentView> {
                     ),
                 ],
               ),
-                onLoadStart: (controller, url) async {
-                  if (mounted) setState(() => _isLoading = true);
-
-                  if (url != null) {
-                    final urlStr = url.toString();
-                    var shouldBlock = context.read<BrowserProvider>().isAutoplayBlocked;
-                    if (urlStr.contains('youtube.com/shorts')) {
-                      shouldBlock = false;
-                    }
-                    await controller.setSettings(
-                      settings: _settingsForUrl(
-                        urlStr,
-                        mediaPlaybackRequiresUserGesture: shouldBlock,
-                      ),
-                    );
-                  }
-                },
-                onUpdateVisitedHistory: (controller, url, isReload) async {
-                  if (mounted && url != null) {
-                    final browser = context.read<BrowserProvider>();
-                    final urlStr = url.toString();
-                    browser.activeTab.updateHistory(urlStr, '');
-                    var shouldBlock = browser.isAutoplayBlocked;
-                    if (urlStr.contains('youtube.com/shorts')) {
-                      shouldBlock = false;
-                    }
-                    await controller.setSettings(
-                      settings: _settingsForUrl(
-                        urlStr,
-                        mediaPlaybackRequiresUserGesture: shouldBlock,
-                      ),
-                    );
-                  }
-                },
-                onLoadStop: (controller, url) async {
-                  if (!_isEnvLoading && mounted) {
-                    setState(() {
-                      _isLoading = false;
-                    });
-                    final browser = context.read<BrowserProvider>();
-                    browser.activeTab.updateHistory(url.toString(), '');
-
-                    // Inline Auto-Play Block for YouTube
-                    if (url.toString().contains('youtube.com')) {
-                      controller.evaluateJavascript(source: '''
-                        setInterval(() => {
-                          if (!window.location.href.includes('/watch') && !window.location.href.includes('/shorts')) {
-                            document.querySelectorAll('video').forEach(v => v.pause());
-                          }
-                        }, 500);
-                      ''');
-                    }
-
-                    // Inject OpenWidget on the Welcome page
-                    final urlStr = url?.toString() ?? '';
-                    if (urlStr.contains('Welcome')) {
-                      await controller.evaluateJavascript(source: '''
-(function() {
-  if (window.OpenWidget) return;
-  window.__ow = window.__ow || {};
-  window.__ow.organizationId = "d22ade09-9a15-40b4-b6e3-1efe8fe15e61";
-  window.__ow.integration_name = "manual_settings";
-  window.__ow.product_name = "openwidget";
-  var s = document.createElement("script");
-  s.async = true;
-  s.type = "text/javascript";
-  s.src = "https://cdn.openwidget.com/openwidget.js";
-  document.head.appendChild(s);
-})();
-''');
-                    }
-
-                    if (browser.isAliasVaultEnabled && !urlStr.contains('app.aliasvault.net')) {
-                      await controller.evaluateJavascript(source: _aliasVaultBridgeJS);
-                    }
-                  }
-                },
-                onReceivedError: (controller, request, error) {
-                  if (mounted) setState(() => _isLoading = false);
-                },
-                onDownloadStartRequest: (controller, request) async {
-                  final browser = context.read<BrowserProvider>();
-                  final installed = await _nativeExtensionService.installExtensionFromUri(
-                    uri: Uri.parse(request.url.toString()),
-                    pageUrl: widget.tabState.currentAppUrl,
-                    suggestedFilename: request.suggestedFilename,
-                  );
-                  if (installed != null) {
-                    browser.registerNativeExtension(installed);
-                    browser.openExtensionPopup(installed.id);
-                    return;
-                  }
-                  await _downloadService.download(context: context, request: request);
-                },
-                onPermissionRequest: (controller, request) async {
-                  return PermissionResponse(
-                    resources: request.resources,
-                    action: PermissionResponseAction.GRANT,
-                  );
-                },
-                // Detect pointer lock signals from JS
-                onConsoleMessage: (controller, consoleMessage) {
-                  final msg = consoleMessage.message;
-                  if (msg == '__PTRLOCK:true') {
-                    _setPointerLock(true);
-                  } else if (msg == '__PTRLOCK:false') {
-                    _setPointerLock(false);
-                  }
-                },
-              ),
-            ),
           ),
+        ),
 
         // ===== LOADING INDICATOR =====
         if (_isLoading)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/browser_provider.dart' show BrowserProvider, BrowserEngine, browserEngineLabel;
+import '../providers/browser_provider.dart' show BrowserProvider, BrowserEngine, PanelType, browserEngineLabel;
+import '../models/engine_profiles.dart';
 import '../providers/edition_provider.dart';
 import '../providers/sidebar_provider.dart';
 import '../services/update_service.dart';
@@ -201,8 +202,7 @@ class SettingsPanel extends StatelessWidget {
   }
 
   Widget _buildEngineToggle(BuildContext context, BrowserProvider browser) {
-    final activeEngine = browser.activeEngine;
-    final isProEngine = browser.isProEngineEnabled;
+    final activeProfile = browser.activeEngineProfile;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -212,63 +212,145 @@ class SettingsPanel extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Header with active engine
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isProEngine ? KodairTheme.primaryBlue : const Color(0xFFCCCCCC),
+              color: activeProfile.accentColor,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             ),
-            child: Text(
-              'Pro Engine',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isProEngine ? Colors.white : Colors.black87,
-              ),
-              textAlign: TextAlign.center,
+            child: Column(
+              children: [
+                Icon(activeProfile.icon, color: Colors.white, size: 22),
+                const SizedBox(height: 4),
+                Text(
+                  'Engine: ${activeProfile.displayName}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  activeProfile.engineName,
+                  style: TextStyle(fontSize: 10, color: Colors.white.withAlpha(180)),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-          SwitchListTile(
-            title: const Text('Enable Pro Engine', style: TextStyle(color: Colors.white)),
-            subtitle: Text(
-              isProEngine
-                  ? 'Active engine: ${browser.activeEngineLabel}'
-                  : 'Uses the Standard engine',
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+
+          // Active engines section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Active Engines', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(180))),
             ),
-            value: isProEngine,
-            activeColor: KodairTheme.primaryBlue,
-            onChanged: (_) => context.read<BrowserProvider>().toggleProEngine(),
           ),
-          if (isProEngine)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: EngineProfiles.active.map((profile) {
+                final isActive = activeProfile.id == profile.id;
+                return _engineChip(context, profile, isActive);
+              }).toList(),
+            ),
+          ),
+
+          // Legacy engines section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Legacy Engines', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white.withAlpha(120))),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: EngineProfiles.legacy.map((profile) {
+                final isActive = activeProfile.id == profile.id;
+                return _engineChip(context, profile, isActive);
+              }).toList(),
+            ),
+          ),
+
+          // Extension store shortcut
+          if (activeProfile.extensionStores.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: BrowserEngine.values
-                    .where((engine) => engine != BrowserEngine.standard)
-                    .map(
-                      (engine) => ChoiceChip(
-                        label: Text(browserEngineLabel(engine)),
-                        selected: activeEngine == engine,
-                        selectedColor: KodairTheme.primaryBlue,
-                        backgroundColor: Colors.white12,
-                        labelStyle: TextStyle(
-                          color: activeEngine == engine ? Colors.white : Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+              child: Column(
+                children: activeProfile.extensionStores.map((store) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          context.read<BrowserProvider>().navigateToApp(store.url, name: store.name);
+                          context.read<BrowserProvider>().togglePanel(PanelType.settings);
+                        },
+                        icon: Icon(store.icon, size: 16),
+                        label: Text(store.name, style: const TextStyle(fontSize: 11)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: activeProfile.accentColor,
+                          side: BorderSide(color: activeProfile.accentColor.withAlpha(80)),
+                          minimumSize: const Size(0, 32),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
-                        side: BorderSide(color: activeEngine == engine ? Colors.white : Colors.white24),
-                        onSelected: (_) => context.read<BrowserProvider>().setBrowserEngine(engine),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _engineChip(BuildContext context, EngineProfile profile, bool isActive) {
+    return GestureDetector(
+      onTap: () {
+        final engine = BrowserEngine.values.firstWhere(
+          (e) => e.name == profile.id,
+          orElse: () => BrowserEngine.chrome,
+        );
+        context.read<BrowserProvider>().setBrowserEngine(engine);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? profile.accentColor.withAlpha(50) : Colors.white.withAlpha(8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive ? profile.accentColor : Colors.white.withAlpha(20),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(profile.icon, size: 14, color: isActive ? profile.accentColor : Colors.white54),
+            const SizedBox(width: 6),
+            Text(
+              profile.displayName,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? profile.accentColor : Colors.white70,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

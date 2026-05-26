@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'kodair_browser/pubspec.yaml'
+      - 'kodair_pro/Cargo.toml'
 
 jobs:
   build-android:
